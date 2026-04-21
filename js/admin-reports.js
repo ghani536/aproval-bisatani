@@ -1,13 +1,15 @@
 /**
  * Portal Karyawan - Admin Reports PT. BISATANI
- * Versi V2: FIX Filter & Approval System
+ * Versi V2.1: FIX Context Approval & Stable Table Render
  */
 const adminReports = {
     allAttendance: [],
     employees: [],
 
     async init() {
-        if (!document.getElementById('attendance-reports-body')) return;
+        const tbody = document.getElementById('attendance-reports-body');
+        if (!tbody) return;
+        
         this.setupFilters();
         await this.loadData();
         this.bindEvents();
@@ -65,11 +67,12 @@ const adminReports = {
         });
     },
 
-    // --- FUNGSI PROSES APPROVAL ---
+    // --- FUNGSI PROSES APPROVAL (Globalized for safety) ---
     async updateApproval(rowId, status) {
         if (!confirm(`Ubah status menjadi ${status}?`)) return;
 
         try {
+            console.log("Mengirim Approval:", { rowId, status });
             const res = await api.post({ 
                 action: 'approveData', 
                 rowId: rowId, 
@@ -77,15 +80,18 @@ const adminReports = {
             });
 
             if (res && res.success) {
-                // Update lokal data agar tidak perlu tarik API lagi (lebih cepat)
+                // Update data di memori lokal agar tampilan langsung berubah
                 const index = this.allAttendance.findIndex(a => String(a.rowId) === String(rowId));
-                if (index !== -1) this.allAttendance[index].approvalStatus = status;
+                if (index !== -1) {
+                    this.allAttendance[index].approvalStatus = status;
+                }
                 this.renderTable();
-                alert("Status diperbarui!");
+                alert("✅ Status berhasil diperbarui di Kolom M!");
             } else {
-                alert("Gagal update status.");
+                alert("❌ Gagal: " + (res.error || "Cek koneksi Apps Script"));
             }
         } catch (e) {
+            console.error("Approval Error:", e);
             alert("Terjadi kesalahan koneksi.");
         }
     },
@@ -102,26 +108,21 @@ const adminReports = {
 
         const filtered = this.allAttendance.filter(log => {
             if (!log.timestamp) return false;
-            
-            // FIX: Ambil 10 karakter pertama (yyyy-mm-dd) dari timestamp
             const logDate = String(log.timestamp).substring(0, 10);
-            
             const matchDate = (!start || !end) ? true : (logDate >= start && logDate <= end);
             const matchType = !type || log.type === type;
             const matchEmp = !empId || String(log.userId) === String(empId);
             const matchSearch = !search || 
                 (log.userName && String(log.userName).toLowerCase().includes(search)) || 
                 (String(log.userId).includes(search));
-            
             return matchDate && matchType && matchEmp && matchSearch;
         });
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px;">Data kosong untuk filter ini.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px;">Data tidak ditemukan.</td></tr>`;
             return;
         }
 
-        // Urutkan data terbaru di paling atas
         filtered.sort((a, b) => b.rowId - a.rowId);
 
         tbody.innerHTML = filtered.map((log, index) => {
@@ -137,7 +138,6 @@ const adminReports = {
             const totalJamDisplay = (log.totalHours && log.totalHours !== "-" && log.totalHours !== "0") ? log.totalHours + " j" : "-";
             const telatInfo = (log.statusTelat && log.statusTelat !== "0" && log.statusTelat !== "-") ? log.statusTelat : "-";
 
-            // Warna Status
             let colorStatus = "#94a3b8"; 
             if (log.approvalStatus === 'APPROVED') colorStatus = "#10b981";
             if (log.approvalStatus === 'REJECTED') colorStatus = "#ef4444";
@@ -159,9 +159,15 @@ const adminReports = {
                     <td style="text-align:center; padding:10px;">
                         <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
                             <span style="font-size:10px; font-weight:bold; color:${colorStatus}">${log.approvalStatus || 'PENDING'}</span>
-                            <div style="display:flex; gap:4px;">
-                                <button onclick="adminReports.updateApproval('${log.rowId}', 'APPROVED')" style="background:#10b981; color:white; border:none; border-radius:4px; padding:3px 7px; cursor:pointer;"><i class="fas fa-check"></i></button>
-                                <button onclick="adminReports.updateApproval('${log.rowId}', 'REJECTED')" style="background:#ef4444; color:white; border:none; border-radius:4px; padding:3px 7px; cursor:pointer;"><i class="fas fa-times"></i></button>
+                            <div style="display:flex; gap:6px;">
+                                <button onclick="window.adminReports.updateApproval('${log.rowId}', 'APPROVED')" 
+                                    style="background:#10b981; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button onclick="window.adminReports.updateApproval('${log.rowId}', 'REJECTED')" 
+                                    style="background:#ef4444; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
+                                    <i class="fas fa-times"></i>
+                                </button>
                             </div>
                         </div>
                     </td>
@@ -171,4 +177,5 @@ const adminReports = {
     }
 };
 
+// Pasang ke window agar bisa diakses dari HTML onclick
 window.adminReports = adminReports;
