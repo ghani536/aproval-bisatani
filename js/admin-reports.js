@@ -1,6 +1,6 @@
 /**
  * Portal Karyawan - Admin Reports PT. BISATANI
- * Versi V2: Integrated Approval System (Kehadiran & Lembur)
+ * Versi V2: FIX Filter & Approval System
  */
 const adminReports = {
     allAttendance: [],
@@ -67,8 +67,7 @@ const adminReports = {
 
     // --- FUNGSI PROSES APPROVAL ---
     async updateApproval(rowId, status) {
-        const emoji = status === 'APPROVED' ? '✅' : '❌';
-        if (!confirm(`${emoji} Ubah status data ini menjadi ${status}?`)) return;
+        if (!confirm(`Ubah status menjadi ${status}?`)) return;
 
         try {
             const res = await api.post({ 
@@ -78,8 +77,11 @@ const adminReports = {
             });
 
             if (res && res.success) {
-                alert(`Berhasil di-${status}`);
-                await this.loadData(); // Refresh data agar tabel update
+                // Update lokal data agar tidak perlu tarik API lagi (lebih cepat)
+                const index = this.allAttendance.findIndex(a => String(a.rowId) === String(rowId));
+                if (index !== -1) this.allAttendance[index].approvalStatus = status;
+                this.renderTable();
+                alert("Status diperbarui!");
             } else {
                 alert("Gagal update status.");
             }
@@ -100,26 +102,29 @@ const adminReports = {
 
         const filtered = this.allAttendance.filter(log => {
             if (!log.timestamp) return false;
-            const logDate = log.timestamp; // Sudah yyyy-mm-dd dari code.gs
+            
+            // FIX: Ambil 10 karakter pertama (yyyy-mm-dd) dari timestamp
+            const logDate = String(log.timestamp).substring(0, 10);
+            
             const matchDate = (!start || !end) ? true : (logDate >= start && logDate <= end);
             const matchType = !type || log.type === type;
             const matchEmp = !empId || String(log.userId) === String(empId);
             const matchSearch = !search || 
-                (log.userName && log.userName.toLowerCase().includes(search)) || 
+                (log.userName && String(log.userName).toLowerCase().includes(search)) || 
                 (String(log.userId).includes(search));
             
             return matchDate && matchType && matchEmp && matchSearch;
         });
 
         if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:20px;">Tidak ada data absensi.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:20px;">Data kosong untuk filter ini.</td></tr>`;
             return;
         }
 
+        // Urutkan data terbaru di paling atas
         filtered.sort((a, b) => b.rowId - a.rowId);
 
         tbody.innerHTML = filtered.map((log, index) => {
-            // Pengusir Jam Purba
             const formatJamBersih = (val) => {
                 if (!val || val === "-" || val === "0") return "-";
                 let sVal = String(val);
@@ -132,10 +137,10 @@ const adminReports = {
             const totalJamDisplay = (log.totalHours && log.totalHours !== "-" && log.totalHours !== "0") ? log.totalHours + " j" : "-";
             const telatInfo = (log.statusTelat && log.statusTelat !== "0" && log.statusTelat !== "-") ? log.statusTelat : "-";
 
-            // Logika Warna Status Approval
-            let colorStatus = "#94a3b8"; // Pending (Abu)
-            if (log.approvalStatus === 'APPROVED') colorStatus = "#10b981"; // Hijau
-            if (log.approvalStatus === 'REJECTED') colorStatus = "#ef4444"; // Merah
+            // Warna Status
+            let colorStatus = "#94a3b8"; 
+            if (log.approvalStatus === 'APPROVED') colorStatus = "#10b981";
+            if (log.approvalStatus === 'REJECTED') colorStatus = "#ef4444";
 
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -151,17 +156,12 @@ const adminReports = {
                     <td style="text-align:center; padding:10px;">${jamMulai}</td>
                     <td style="text-align:center; padding:10px;">${jamSelesai}</td>
                     <td style="text-align:center; font-weight:bold; color:#2563eb; padding:10px;">${totalJamDisplay}</td>
-                    
-                    <td style="text-align:center; padding:10px; white-space:nowrap;">
-                        <div style="display:flex; flex-direction:column; align-items:center; gap:5px;">
-                            <span style="font-size:10px; font-weight:bold; color:${colorStatus}">${log.approvalStatus}</span>
-                            <div style="display:flex; gap:3px;">
-                                <button onclick="adminReports.updateApproval('${log.rowId}', 'APPROVED')" style="background:#10b981; color:white; border:none; border-radius:4px; padding:4px 8px; cursor:pointer;" title="Setujui">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                                <button onclick="adminReports.updateApproval('${log.rowId}', 'REJECTED')" style="background:#ef4444; color:white; border:none; border-radius:4px; padding:4px 8px; cursor:pointer;" title="Tolak">
-                                    <i class="fas fa-times"></i>
-                                </button>
+                    <td style="text-align:center; padding:10px;">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                            <span style="font-size:10px; font-weight:bold; color:${colorStatus}">${log.approvalStatus || 'PENDING'}</span>
+                            <div style="display:flex; gap:4px;">
+                                <button onclick="adminReports.updateApproval('${log.rowId}', 'APPROVED')" style="background:#10b981; color:white; border:none; border-radius:4px; padding:3px 7px; cursor:pointer;"><i class="fas fa-check"></i></button>
+                                <button onclick="adminReports.updateApproval('${log.rowId}', 'REJECTED')" style="background:#ef4444; color:white; border:none; border-radius:4px; padding:3px 7px; cursor:pointer;"><i class="fas fa-times"></i></button>
                             </div>
                         </div>
                     </td>
