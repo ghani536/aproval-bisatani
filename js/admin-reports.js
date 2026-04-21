@@ -1,6 +1,6 @@
 /**
  * Portal Karyawan - Admin Reports PT. BISATANI
- * Versi V2.1: FIX Context Approval & Stable Table Render
+ * Versi V2.2: FIX Context Approval & Stable Table Render
  */
 const adminReports = {
     allAttendance: [],
@@ -67,12 +67,13 @@ const adminReports = {
         });
     },
 
-    // --- FUNGSI PROSES APPROVAL (Globalized for safety) ---
+    // --- FUNGSI PROSES APPROVAL ---
     async updateApproval(rowId, status) {
         if (!confirm(`Ubah status menjadi ${status}?`)) return;
 
         try {
             console.log("Mengirim Approval:", { rowId, status });
+            // Menggunakan api.post yang sudah ada di api.js
             const res = await api.post({ 
                 action: 'approveData', 
                 rowId: rowId, 
@@ -80,7 +81,7 @@ const adminReports = {
             });
 
             if (res && res.success) {
-                // Update data di memori lokal agar tampilan langsung berubah
+                // Update data di memori lokal agar tampilan langsung berubah tanpa reload
                 const index = this.allAttendance.findIndex(a => String(a.rowId) === String(rowId));
                 if (index !== -1) {
                     this.allAttendance[index].approvalStatus = status;
@@ -88,7 +89,7 @@ const adminReports = {
                 this.renderTable();
                 alert("✅ Status berhasil diperbarui di Kolom M!");
             } else {
-                alert("❌ Gagal: " + (res.error || "Cek koneksi Apps Script"));
+                alert("❌ Gagal: " + (res.error || "Aksi approveData tidak ditemukan atau error backend"));
             }
         } catch (e) {
             console.error("Approval Error:", e);
@@ -123,6 +124,7 @@ const adminReports = {
             return;
         }
 
+        // Urutkan data terbaru berdasarkan rowId (terbesar di atas)
         filtered.sort((a, b) => b.rowId - a.rowId);
 
         tbody.innerHTML = filtered.map((log, index) => {
@@ -177,5 +179,5 @@ const adminReports = {
     }
 };
 
-// Pasang ke window agar bisa diakses dari HTML onclick
+// Global akses agar bisa dipanggil dari tombol HTML
 window.adminReports = adminReports;
