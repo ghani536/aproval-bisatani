@@ -1,6 +1,6 @@
 /**
  * Portal Karyawan - Admin Reports PT. BISATANI
- * Versi V2.3: JALUR AMAN (Numpang saveEmployee)
+ * Versi V2.4: FINAL STABLE (Numpang saveEmployee Jalur Aman)
  */
 const adminReports = {
     allAttendance: [],
@@ -68,27 +68,39 @@ const adminReports = {
     },
 
     // --- FUNGSI PROSES APPROVAL (JALUR NUMPANG) ---
-   async updateApproval(rowId, status) {
-    if (!confirm(`Ubah status menjadi ${status}?`)) return;
+    async updateApproval(rowId, status) {
+        if (!confirm(`Ubah status menjadi ${status}?`)) return;
 
-    try {
-        const res = await api.post({ 
-            action: 'saveEmployee',      // Jalur yang sudah pasti dikenal Google
-            subAction: 'updateApproval', // Tanda khusus untuk masuk logika approval
-            rowId: rowId, 
-            status: status 
-        });
+        try {
+            // Pastikan rowId dikirim sebagai angka/string bersih
+            const cleanRowId = String(rowId).trim();
+            
+            console.log("🚀 Mengirim Approval:", { cleanRowId, status });
 
-        if (res && res.success) {
-            alert("✅ Status Berhasil Diperbarui!");
-            this.loadData(); // Segarkan tabel
-        } else {
-            alert("❌ Gagal: " + (res.error || "Cek koneksi script"));
+            const res = await api.post({ 
+                action: 'saveEmployee',      // Aksi yang sudah pasti jalan
+                subAction: 'updateApproval', // Kunci untuk masuk logika if di backend
+                rowId: cleanRowId, 
+                status: status 
+            });
+
+            if (res && res.success) {
+                alert(`✅ ${res.message || "Status Berhasil Diperbarui!"}`);
+                
+                // Update data lokal agar tabel langsung berubah
+                const index = this.allAttendance.findIndex(a => String(a.rowId) === cleanRowId);
+                if (index !== -1) {
+                    this.allAttendance[index].approvalStatus = status;
+                }
+                this.renderTable();
+            } else {
+                alert("❌ Gagal: " + (res.error || "Aksi ditolak backend"));
+            }
+        } catch (e) {
+            console.error("Approval Error:", e);
+            alert("Terjadi kesalahan koneksi ke Google Script.");
         }
-    } catch (e) {
-        alert("Terjadi kesalahan koneksi.");
-    }
-},
+    },
 
     renderTable() {
         const tbody = document.getElementById('attendance-reports-body');
