@@ -1,6 +1,6 @@
 /**
  * Portal Karyawan - Admin Reports PT. BISATANI
- * Versi V2.2: FIX Context Approval & Stable Table Render
+ * Versi V2.3: JALUR AMAN (Numpang saveEmployee)
  */
 const adminReports = {
     allAttendance: [],
@@ -67,29 +67,31 @@ const adminReports = {
         });
     },
 
-    // --- FUNGSI PROSES APPROVAL ---
+    // --- FUNGSI PROSES APPROVAL (JALUR NUMPANG) ---
     async updateApproval(rowId, status) {
         if (!confirm(`Ubah status menjadi ${status}?`)) return;
 
         try {
-            console.log("Mengirim Approval:", { rowId, status });
-            // Menggunakan api.post yang sudah ada di api.js
+            console.log("Mengirim Approval (Numpang saveEmployee):", { rowId, status });
+            
+            // Kita gunakan action 'saveEmployee' karena ini sudah pasti terdaftar di Google Script
             const res = await api.post({ 
-                action: 'approveData', 
+                action: 'saveEmployee', 
+                subAction: 'updateApproval', // Tanda khusus untuk logika di code.gs
                 rowId: rowId, 
                 status: status 
             });
 
             if (res && res.success) {
-                // Update data di memori lokal agar tampilan langsung berubah tanpa reload
+                // Update tampilan lokal tanpa reload
                 const index = this.allAttendance.findIndex(a => String(a.rowId) === String(rowId));
                 if (index !== -1) {
                     this.allAttendance[index].approvalStatus = status;
                 }
                 this.renderTable();
-                alert("✅ Status berhasil diperbarui di Kolom M!");
+                alert(`✅ Status Berhasil diubah ke ${status}`);
             } else {
-                alert("❌ Gagal: " + (res.error || "Aksi approveData tidak ditemukan atau error backend"));
+                alert("❌ Gagal: " + (res.error || "Aksi ditolak oleh backend"));
             }
         } catch (e) {
             console.error("Approval Error:", e);
@@ -124,7 +126,6 @@ const adminReports = {
             return;
         }
 
-        // Urutkan data terbaru berdasarkan rowId (terbesar di atas)
         filtered.sort((a, b) => b.rowId - a.rowId);
 
         tbody.innerHTML = filtered.map((log, index) => {
@@ -179,5 +180,4 @@ const adminReports = {
     }
 };
 
-// Global akses agar bisa dipanggil dari tombol HTML
 window.adminReports = adminReports;
