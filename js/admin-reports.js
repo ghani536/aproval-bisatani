@@ -68,36 +68,27 @@ const adminReports = {
     },
 
     // --- FUNGSI PROSES APPROVAL (JALUR NUMPANG) ---
-    async updateApproval(rowId, status) {
-        if (!confirm(`Ubah status menjadi ${status}?`)) return;
+   async updateApproval(rowId, status) {
+    if (!confirm(`Ubah status menjadi ${status}?`)) return;
 
-        try {
-            console.log("Mengirim Approval (Numpang saveEmployee):", { rowId, status });
-            
-            // Kita gunakan action 'saveEmployee' karena ini sudah pasti terdaftar di Google Script
-            const res = await api.post({ 
-                action: 'saveEmployee', 
-                subAction: 'updateApproval', // Tanda khusus untuk logika di code.gs
-                rowId: rowId, 
-                status: status 
-            });
+    try {
+        const res = await api.post({ 
+            action: 'saveEmployee',      // Jalur yang sudah pasti dikenal Google
+            subAction: 'updateApproval', // Tanda khusus untuk masuk logika approval
+            rowId: rowId, 
+            status: status 
+        });
 
-            if (res && res.success) {
-                // Update tampilan lokal tanpa reload
-                const index = this.allAttendance.findIndex(a => String(a.rowId) === String(rowId));
-                if (index !== -1) {
-                    this.allAttendance[index].approvalStatus = status;
-                }
-                this.renderTable();
-                alert(`✅ Status Berhasil diubah ke ${status}`);
-            } else {
-                alert("❌ Gagal: " + (res.error || "Aksi ditolak oleh backend"));
-            }
-        } catch (e) {
-            console.error("Approval Error:", e);
-            alert("Terjadi kesalahan koneksi.");
+        if (res && res.success) {
+            alert("✅ Status Berhasil Diperbarui!");
+            this.loadData(); // Segarkan tabel
+        } else {
+            alert("❌ Gagal: " + (res.error || "Cek koneksi script"));
         }
-    },
+    } catch (e) {
+        alert("Terjadi kesalahan koneksi.");
+    }
+},
 
     renderTable() {
         const tbody = document.getElementById('attendance-reports-body');
