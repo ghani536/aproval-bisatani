@@ -1,6 +1,6 @@
 /**
  * Portal Karyawan - Admin Reports PT. BISATANI
- * Versi V2.4: FINAL STABLE (Numpang saveEmployee Jalur Aman)
+ * Versi V2.5: FIX UNDEFINED ROWID & SYNC STABLE
  */
 const adminReports = {
     allAttendance: [],
@@ -67,19 +67,23 @@ const adminReports = {
         });
     },
 
-    // --- FUNGSI PROSES APPROVAL (JALUR NUMPANG) ---
+    // --- FUNGSI PROSES APPROVAL ---
     async updateApproval(rowId, status) {
+        // Cek jika rowId tidak ada
+        if (!rowId || rowId === 'undefined') {
+            alert("❌ Error: ID Baris tidak ditemukan (Undefined). Coba refresh halaman.");
+            return;
+        }
+
         if (!confirm(`Ubah status menjadi ${status}?`)) return;
 
         try {
-            // Pastikan rowId dikirim sebagai angka/string bersih
             const cleanRowId = String(rowId).trim();
-            
             console.log("🚀 Mengirim Approval:", { cleanRowId, status });
 
             const res = await api.post({ 
-                action: 'saveEmployee',      // Aksi yang sudah pasti jalan
-                subAction: 'updateApproval', // Kunci untuk masuk logika if di backend
+                action: 'saveEmployee',      
+                subAction: 'updateApproval', 
                 rowId: cleanRowId, 
                 status: status 
             });
@@ -87,7 +91,7 @@ const adminReports = {
             if (res && res.success) {
                 alert(`✅ ${res.message || "Status Berhasil Diperbarui!"}`);
                 
-                // Update data lokal agar tabel langsung berubah
+                // Update data lokal
                 const index = this.allAttendance.findIndex(a => String(a.rowId) === cleanRowId);
                 if (index !== -1) {
                     this.allAttendance[index].approvalStatus = status;
@@ -129,9 +133,12 @@ const adminReports = {
             return;
         }
 
-        filtered.sort((a, b) => b.rowId - a.rowId);
+        // Sorting: Baris terbaru di atas
+        filtered.sort((a, b) => Number(b.rowId) - Number(a.rowId));
 
         tbody.innerHTML = filtered.map((log, index) => {
+            const currentRwId = log.rowId; // Simpan rowId baris ini
+            
             const formatJamBersih = (val) => {
                 if (!val || val === "-" || val === "0") return "-";
                 let sVal = String(val);
@@ -166,11 +173,11 @@ const adminReports = {
                         <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
                             <span style="font-size:10px; font-weight:bold; color:${colorStatus}">${log.approvalStatus || 'PENDING'}</span>
                             <div style="display:flex; gap:6px;">
-                                <button onclick="window.adminReports.updateApproval('${log.rowId}', 'APPROVED')" 
+                                <button onclick="window.adminReports.updateApproval('${currentRwId}', 'APPROVED')" 
                                     style="background:#10b981; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
                                     <i class="fas fa-check"></i>
                                 </button>
-                                <button onclick="window.adminReports.updateApproval('${log.rowId}', 'REJECTED')" 
+                                <button onclick="window.adminReports.updateApproval('${currentRwId}', 'REJECTED')" 
                                     style="background:#ef4444; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
                                     <i class="fas fa-times"></i>
                                 </button>
@@ -183,4 +190,5 @@ const adminReports = {
     }
 };
 
+// Pastikan object bisa diakses global
 window.adminReports = adminReports;
