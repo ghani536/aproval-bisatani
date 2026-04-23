@@ -76,36 +76,34 @@ const adminReports = {
     },
 
     async updateApproval(rowId, status) {
-        // Validasi Ekstra
-        if (!rowId || rowId === 'undefined' || rowId === "0") {
-            console.error("DEBUG: rowId Error ->", rowId);
-            alert("❌ Sistem Gagal membaca ID Baris. Mohon Refresh (Ctrl+F5) halaman ini.");
-            return;
-        }
-
-        if (!confirm(`Konfirmasi Baris #${rowId}: Ubah ke ${status}?`)) return;
+        if (!rowId || rowId === 'undefined') return alert("Error: ID Baris tidak ditemukan!");
+        if (!confirm(`Ubah status baris #${rowId} menjadi ${status}?`)) return;
 
         try {
+            // CEK CONSOLE: Jika masih muncul 'saveEmployee', berarti file ini belum ter-save/ter-upload
+            console.log("🚀 Mengirim ke Backend dengan Action: approveData");
+
             const res = await api.post({ 
-                action: 'saveEmployee',      
-                subAction: 'updateApproval', 
-                rowId: parseInt(rowId), 
+                action: 'approveData', // WAJIB INI
+                rowId: rowId, 
                 status: status 
             });
 
             if (res && res.success) {
-                alert(`✅ Berhasil! Baris ${rowId} telah ${status}`);
+                alert(`✅ Berhasil: ${res.message}`);
                 
-                // Update data lokal agar tabel berubah seketika
-                const item = this.allAttendance.find(a => String(a.rowId) === String(rowId));
-                if (item) item.approvalStatus = status;
-                
-                this.renderTable();
+                // Update tampilan lokal tanpa refresh
+                const index = this.allAttendance.findIndex(a => String(a.rowId) === String(rowId));
+                if (index !== -1) {
+                    this.allAttendance[index].approvalStatus = status;
+                    this.renderTable();
+                }
             } else {
-                alert("❌ Gagal: " + (res.error || "Cek koneksi Backend"));
+                alert("❌ Gagal: " + (res.error || "Cek Backend"));
             }
         } catch (e) {
-            alert("Terjadi gangguan koneksi ke Google Script.");
+            console.error("Error API:", e);
+            alert("Kesalahan koneksi ke server.");
         }
     },
 
