@@ -75,36 +75,29 @@ const adminReports = {
         });
     },
 
-    async updateApproval(rowId, status) {
-        if (!rowId || rowId === 'undefined') return alert("Error: ID Baris tidak ditemukan!");
-        if (!confirm(`Ubah status baris #${rowId} menjadi ${status}?`)) return;
+async updateApproval(rowId, status) {
+        if (!rowId) return alert("RowId Kosong");
+        if (!confirm(`Ubah ke ${status}?`)) return;
 
         try {
-            // CEK CONSOLE: Jika masih muncul 'saveEmployee', berarti file ini belum ter-save/ter-upload
-            console.log("🚀 Mengirim ke Backend dengan Action: approveData");
-
+            console.log("🚀 Menggunakan Jalur saveEmployee...");
+            
             const res = await api.post({ 
-                action: 'approveData', // WAJIB INI
+                action: 'saveEmployee',      // Kembali ke asal
+                subAction: 'updateApproval', // Numpang di sini
                 rowId: rowId, 
                 status: status 
             });
 
             if (res && res.success) {
-                alert(`✅ Berhasil: ${res.message}`);
-                
-                // Update tampilan lokal tanpa refresh
+                alert("✅ Berhasil Update Sheet!");
                 const index = this.allAttendance.findIndex(a => String(a.rowId) === String(rowId));
-                if (index !== -1) {
-                    this.allAttendance[index].approvalStatus = status;
-                    this.renderTable();
-                }
+                if (index !== -1) this.allAttendance[index].approvalStatus = status;
+                this.renderTable();
             } else {
                 alert("❌ Gagal: " + (res.error || "Cek Backend"));
             }
-        } catch (e) {
-            console.error("Error API:", e);
-            alert("Kesalahan koneksi ke server.");
-        }
+        } catch (e) { alert("Error Koneksi!"); }
     },
 
     renderTable() {
