@@ -1,6 +1,6 @@
 /**
  * Portal Karyawan - Admin Reports PT. BISATANI
- * Versi V2.8: FINAL STABLE (Fix RowID & Sync Column M)
+ * Versi V2.9: ULTIMATE RECOVERY (Anti-Undefined RowID)
  */
 const adminReports = {
     allAttendance: [],
@@ -26,7 +26,7 @@ const adminReports = {
     async loadData() {
         const tbody = document.getElementById('attendance-reports-body');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:20px;"><i class="fas fa-sync fa-spin"></i> Menghubungkan ke database...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:20px;"><i class="fas fa-sync fa-spin"></i> Sinkronisasi Database...</td></tr>';
 
         try {
             const [resAtt, resEmp] = await Promise.all([
@@ -34,7 +34,15 @@ const adminReports = {
                 api.post({ action: 'getEmployees' })
             ]);
 
-            if (resAtt && resAtt.success) this.allAttendance = resAtt.data || [];
+            // Ambil data dan pastikan rowId tersimpan
+            if (resAtt && resAtt.success) {
+                this.allAttendance = resAtt.data.map((item, index) => {
+                    // Jika rowId dari backend tidak ada, buat cadangan berdasarkan index (Baris 1=Header, jadi +2)
+                    if (!item.rowId) item.rowId = index + 2; 
+                    return item;
+                });
+            }
+            
             if (resEmp && resEmp.success) {
                 this.employees = resEmp.data || [];
                 this.populateEmployeeFilter();
@@ -42,7 +50,7 @@ const adminReports = {
             this.renderTable();
         } catch (e) {
             console.error("Load Data Error:", e);
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:red; padding:20px;">Gagal sinkronisasi data.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:red; padding:20px;">Gagal terhubung ke database.</td></tr>';
         }
     },
 
@@ -67,40 +75,37 @@ const adminReports = {
         });
     },
 
-    // --- FUNGSI PROSES APPROVAL ---
     async updateApproval(rowId, status) {
-        if (!rowId || rowId === 'undefined' || rowId === 0) {
-            alert("❌ Error: ID Baris (rowId) tidak ditemukan. Mohon refresh halaman.");
+        // Validasi Ekstra
+        if (!rowId || rowId === 'undefined' || rowId === "0") {
+            console.error("DEBUG: rowId Error ->", rowId);
+            alert("❌ Sistem Gagal membaca ID Baris. Mohon Refresh (Ctrl+F5) halaman ini.");
             return;
         }
 
-        if (!confirm(`Ubah status baris #${rowId} menjadi ${status}?`)) return;
+        if (!confirm(`Konfirmasi Baris #${rowId}: Ubah ke ${status}?`)) return;
 
         try {
-            console.log("🚀 Mengirim Approval ke Backend:", { rowId, status });
-
             const res = await api.post({ 
                 action: 'saveEmployee',      
                 subAction: 'updateApproval', 
-                rowId: rowId, 
+                rowId: parseInt(rowId), 
                 status: status 
             });
 
             if (res && res.success) {
-                alert(`✅ Berhasil! ${res.message || "Status diperbarui di Sheet."}`);
+                alert(`✅ Berhasil! Baris ${rowId} telah ${status}`);
                 
-                // Update data lokal agar tabel langsung berubah tanpa refresh
-                const index = this.allAttendance.findIndex(a => String(a.rowId) === String(rowId));
-                if (index !== -1) {
-                    this.allAttendance[index].approvalStatus = status;
-                }
+                // Update data lokal agar tabel berubah seketika
+                const item = this.allAttendance.find(a => String(a.rowId) === String(rowId));
+                if (item) item.approvalStatus = status;
+                
                 this.renderTable();
             } else {
-                alert("❌ Gagal: " + (res.error || "Aksi ditolak backend"));
+                alert("❌ Gagal: " + (res.error || "Cek koneksi Backend"));
             }
         } catch (e) {
-            console.error("Approval Error:", e);
-            alert("Terjadi kesalahan koneksi ke Google Script.");
+            alert("Terjadi gangguan koneksi ke Google Script.");
         }
     },
 
@@ -131,25 +136,13 @@ const adminReports = {
             return;
         }
 
-        // Sorting: Baris terbaru di atas (Melihat rowId dari Sheet)
+        // Sorting: Baris paling bawah di Sheet (rowId terbesar) tampil di paling atas Web
         filtered.sort((a, b) => Number(b.rowId) - Number(a.rowId));
 
         tbody.innerHTML = filtered.map((log, index) => {
-            // Mengunci rowId untuk setiap tombol
-            const targetRow = log.rowId;
+            // Pastikan rowId ditarik dari objek log yang benar
+            const finalRowId = log.rowId;
             
-            const formatJamBersih = (val) => {
-                if (!val || val === "-" || val === "0") return "-";
-                let sVal = String(val);
-                if (sVal.includes('T')) return sVal.split('T')[1].substring(0, 5);
-                return sVal;
-            };
-
-            const jamMulai = formatJamBersih(log.mulai);
-            const jamSelesai = formatJamBersih(log.selesai);
-            const totalJamDisplay = (log.totalHours && log.totalHours !== "-" && log.totalHours !== "0") ? log.totalHours + " j" : "-";
-            const telatInfo = (log.statusTelat && log.statusTelat !== "0" && log.statusTelat !== "-") ? log.statusTelat : "-";
-
             let colorStatus = "#94a3b8"; 
             if (log.approvalStatus === 'APPROVED') colorStatus = "#10b981";
             if (log.approvalStatus === 'REJECTED') colorStatus = "#ef4444";
@@ -164,19 +157,19 @@ const adminReports = {
                     <td style="text-align:center; padding:10px;">
                         ${log.image ? `<img src="${log.image}" style="width:30px; height:30px; border-radius:4px; object-fit:cover; cursor:pointer;" onclick="window.open(this.src)">` : '-'}
                     </td>
-                    <td style="padding:10px; color:#ef4444;"><small>${telatInfo}</small></td>
-                    <td style="text-align:center; padding:10px;">${jamMulai}</td>
-                    <td style="text-align:center; padding:10px;">${jamSelesai}</td>
-                    <td style="text-align:center; font-weight:bold; color:#2563eb; padding:10px;">${totalJamDisplay}</td>
+                    <td style="padding:10px; color:#ef4444;"><small>${log.statusTelat || '-'}</small></td>
+                    <td style="text-align:center; padding:10px;">${log.mulai || '-'}</td>
+                    <td style="text-align:center; padding:10px;">${log.selesai || '-'}</td>
+                    <td style="text-align:center; font-weight:bold; color:#2563eb; padding:10px;">${log.totalHours || '0'} j</td>
                     <td style="text-align:center; padding:10px;">
                         <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
                             <span style="font-size:10px; font-weight:bold; color:${colorStatus}">${log.approvalStatus || 'PENDING'}</span>
                             <div style="display:flex; gap:6px;">
-                                <button onclick="adminReports.updateApproval(${targetRow}, 'APPROVED')" 
+                                <button onclick="adminReports.updateApproval(${finalRowId}, 'APPROVED')" 
                                     style="background:#10b981; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
                                     <i class="fas fa-check"></i>
                                 </button>
-                                <button onclick="adminReports.updateApproval(${targetRow}, 'REJECTED')" 
+                                <button onclick="adminReports.updateApproval(${finalRowId}, 'REJECTED')" 
                                     style="background:#ef4444; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
                                     <i class="fas fa-times"></i>
                                 </button>
@@ -189,5 +182,4 @@ const adminReports = {
     }
 };
 
-// Pastikan object bisa diakses global oleh tombol HTML
 window.adminReports = adminReports;
