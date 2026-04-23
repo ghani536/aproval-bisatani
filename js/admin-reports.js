@@ -1,6 +1,6 @@
 /**
  * Portal Karyawan - Admin Reports PT. BISATANI
- * Versi V2.5: FIX UNDEFINED ROWID & SYNC STABLE
+ * Versi V2.8: FINAL STABLE (Fix RowID & Sync Column M)
  */
 const adminReports = {
     allAttendance: [],
@@ -69,30 +69,28 @@ const adminReports = {
 
     // --- FUNGSI PROSES APPROVAL ---
     async updateApproval(rowId, status) {
-        // Cek jika rowId tidak ada
-        if (!rowId || rowId === 'undefined') {
-            alert("❌ Error: ID Baris tidak ditemukan (Undefined). Coba refresh halaman.");
+        if (!rowId || rowId === 'undefined' || rowId === 0) {
+            alert("❌ Error: ID Baris (rowId) tidak ditemukan. Mohon refresh halaman.");
             return;
         }
 
-        if (!confirm(`Ubah status menjadi ${status}?`)) return;
+        if (!confirm(`Ubah status baris #${rowId} menjadi ${status}?`)) return;
 
         try {
-            const cleanRowId = String(rowId).trim();
-            console.log("🚀 Mengirim Approval:", { cleanRowId, status });
+            console.log("🚀 Mengirim Approval ke Backend:", { rowId, status });
 
             const res = await api.post({ 
                 action: 'saveEmployee',      
                 subAction: 'updateApproval', 
-                rowId: cleanRowId, 
+                rowId: rowId, 
                 status: status 
             });
 
             if (res && res.success) {
-                alert(`✅ ${res.message || "Status Berhasil Diperbarui!"}`);
+                alert(`✅ Berhasil! ${res.message || "Status diperbarui di Sheet."}`);
                 
-                // Update data lokal
-                const index = this.allAttendance.findIndex(a => String(a.rowId) === cleanRowId);
+                // Update data lokal agar tabel langsung berubah tanpa refresh
+                const index = this.allAttendance.findIndex(a => String(a.rowId) === String(rowId));
                 if (index !== -1) {
                     this.allAttendance[index].approvalStatus = status;
                 }
@@ -106,7 +104,7 @@ const adminReports = {
         }
     },
 
-renderTable() {
+    renderTable() {
         const tbody = document.getElementById('attendance-reports-body');
         if (!tbody) return;
 
@@ -133,12 +131,12 @@ renderTable() {
             return;
         }
 
-        // Sorting: Baris terbaru di atas
+        // Sorting: Baris terbaru di atas (Melihat rowId dari Sheet)
         filtered.sort((a, b) => Number(b.rowId) - Number(a.rowId));
 
         tbody.innerHTML = filtered.map((log, index) => {
-            // REVISI DISINI: Ambil rowId dari log, jika tidak ada hitung manual berdasarkan urutan data asli
-            const cleanId = log.rowId || (this.allAttendance.length - index + 1);
+            // Mengunci rowId untuk setiap tombol
+            const targetRow = log.rowId;
             
             const formatJamBersih = (val) => {
                 if (!val || val === "-" || val === "0") return "-";
@@ -174,11 +172,11 @@ renderTable() {
                         <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
                             <span style="font-size:10px; font-weight:bold; color:${colorStatus}">${log.approvalStatus || 'PENDING'}</span>
                             <div style="display:flex; gap:6px;">
-                                <button onclick="adminReports.updateApproval(${cleanId}, 'APPROVED')" 
+                                <button onclick="adminReports.updateApproval(${targetRow}, 'APPROVED')" 
                                     style="background:#10b981; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
                                     <i class="fas fa-check"></i>
                                 </button>
-                                <button onclick="adminReports.updateApproval(${cleanId}, 'REJECTED')" 
+                                <button onclick="adminReports.updateApproval(${targetRow}, 'REJECTED')" 
                                     style="background:#ef4444; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
                                     <i class="fas fa-times"></i>
                                 </button>
@@ -191,5 +189,5 @@ renderTable() {
     }
 };
 
-// Pastikan object bisa diakses global
+// Pastikan object bisa diakses global oleh tombol HTML
 window.adminReports = adminReports;
