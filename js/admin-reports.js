@@ -106,7 +106,7 @@ const adminReports = {
         }
     },
 
-    renderTable() {
+renderTable() {
         const tbody = document.getElementById('attendance-reports-body');
         if (!tbody) return;
 
@@ -137,7 +137,8 @@ const adminReports = {
         filtered.sort((a, b) => Number(b.rowId) - Number(a.rowId));
 
         tbody.innerHTML = filtered.map((log, index) => {
-            const currentRwId = log.rowId; // Simpan rowId baris ini
+            // REVISI DISINI: Ambil rowId dari log, jika tidak ada hitung manual berdasarkan urutan data asli
+            const cleanId = log.rowId || (this.allAttendance.length - index + 1);
             
             const formatJamBersih = (val) => {
                 if (!val || val === "-" || val === "0") return "-";
@@ -173,11 +174,11 @@ const adminReports = {
                         <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
                             <span style="font-size:10px; font-weight:bold; color:${colorStatus}">${log.approvalStatus || 'PENDING'}</span>
                             <div style="display:flex; gap:6px;">
-                                <button onclick="window.adminReports.updateApproval('${currentRwId}', 'APPROVED')" 
+                                <button onclick="adminReports.updateApproval(${cleanId}, 'APPROVED')" 
                                     style="background:#10b981; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
                                     <i class="fas fa-check"></i>
                                 </button>
-                                <button onclick="window.adminReports.updateApproval('${currentRwId}', 'REJECTED')" 
+                                <button onclick="adminReports.updateApproval(${cleanId}, 'REJECTED')" 
                                     style="background:#ef4444; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
                                     <i class="fas fa-times"></i>
                                 </button>
