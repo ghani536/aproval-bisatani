@@ -10,12 +10,21 @@ const absensi = {
     statusCache: null,
     SETTINGS_CACHE_KEY: 'bisatani_settings_v1',
     SETTINGS_TTL: 60 * 60 * 1000, // 1 jam
+    STATUS_CACHE_KEY: 'bisatani_status_v1',
 
     async init() {
         this.loadSettingsFromLocalCache();
+        this.loadStatusFromLocalCache();
         this.startCamera();
         this.getLocation();
-        await this.renderButtons();
+
+        // Render instant dari cache (kalau ada), lalu sync GAS di background
+        if (this.statusCache !== null) {
+            this.paintButtons();
+            this.refreshFromServer();
+        } else {
+            await this.renderButtons();
+        }
     },
 
     loadSettingsFromLocalCache() {
@@ -36,6 +45,37 @@ const absensi = {
                 t: Date.now(),
                 data: data
             }));
+        } catch (e) {}
+    },
+
+    statusCacheKeyForUser() {
+        const uid = (window.auth && auth.user && auth.user.id) ? auth.user.id : 'anon';
+        return this.STATUS_CACHE_KEY + ':' + uid;
+    },
+
+    loadStatusFromLocalCache() {
+        try {
+            const raw = localStorage.getItem(this.statusCacheKeyForUser());
+            if (!raw) return;
+            const cached = JSON.parse(raw);
+            // Cache hanya valid kalau tanggal masih hari ini
+            const today = this.todayStr();
+            const cachedDate = this.normalizeDateStr(cached.date || cached.timestamp);
+            if (cachedDate === today) {
+                this.statusCache = cached;
+                console.log("Status absen dimuat dari cache lokal:", cached.type);
+            } else {
+                // cache basi (hari sudah ganti), hapus
+                localStorage.removeItem(this.statusCacheKeyForUser());
+            }
+        } catch (e) {}
+    },
+
+    saveStatusToLocalCache(status) {
+        try {
+            if (status) {
+                localStorage.setItem(this.statusCacheKeyForUser(), JSON.stringify(status));
+            }
         } catch (e) {}
     },
 
@@ -120,11 +160,47 @@ const absensi = {
                 this.saveSettingsToLocalCache(settingsRes.data);
             }
             this.statusCache = (statusRes && statusRes.success) ? statusRes.data : null;
+            this.saveStatusToLocalCache(this.statusCache);
 
             this.paintButtons();
         } catch (e) {
             console.error("Render Error:", e);
             container.innerHTML = '<button onclick="location.reload()" class="btn-primary" style="width:100%; padding:15px;">Gagal Sinkron, Klik untuk Refresh</button>';
+        }
+    },
+
+    // Background refresh: tarik data baru dari GAS tanpa block UI
+    async refreshFromServer() {
+        try {
+            const fetches = [api.post({ action: 'getAttendanceStatus', userId: auth.user.id })];
+            const needSettings = !this.settingsCache;
+            if (needSettings) fetches.push(api.post({ action: 'getSettings' }));
+
+            const results = await Promise.all(fetches);
+            const statusRes = results[0];
+            const settingsRes = needSettings ? results[1] : null;
+
+            if (settingsRes && settingsRes.success) {
+                this.settingsCache = settingsRes.data;
+                this.saveSettingsToLocalCache(settingsRes.data);
+            }
+
+            if (statusRes && statusRes.success) {
+                const fresh = statusRes.data;
+                const cachedType = this.statusCache ? (this.statusCache.type || this.statusCache.Tipe) : null;
+                const freshType = fresh ? (fresh.type || fresh.Tipe) : null;
+
+                this.statusCache = fresh;
+                this.saveStatusToLocalCache(fresh);
+
+                // Repaint hanya kalau ada perubahan dari cache
+                if (cachedType !== freshType) {
+                    console.log("Status berubah:", cachedType, "->", freshType, "(repaint)");
+                    this.paintButtons();
+                }
+            }
+        } catch (e) {
+            console.warn("Background sync gagal, pakai cache:", e);
         }
     },
 
@@ -230,6 +306,7 @@ const absensi = {
                 type: type,
                 timestamp: new Date().toISOString()
             };
+            this.saveStatusToLocalCache(this.statusCache);
 
             setTimeout(() => this.paintButtons(), 700);
 
