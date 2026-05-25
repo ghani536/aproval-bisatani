@@ -17,6 +17,7 @@ const absensi = {
         this.loadStatusFromLocalCache();
         this.startCamera();
         this.getLocation();
+        this.bindQuoteCounter();
 
         // Render instant dari cache (kalau ada), lalu sync GAS di background
         if (this.statusCache !== null) {
@@ -25,6 +26,21 @@ const absensi = {
         } else {
             await this.renderButtons();
         }
+    },
+
+    bindQuoteCounter() {
+        const ta = document.getElementById('absen-quote');
+        const counter = document.getElementById('quote-counter');
+        if (!ta || !counter || ta.dataset.bound === '1') return;
+        ta.addEventListener('input', () => {
+            counter.textContent = String(ta.value.length);
+        });
+        ta.dataset.bound = '1';
+    },
+
+    setQuoteWrapperVisible(show) {
+        const w = document.getElementById('quote-wrapper');
+        if (w) w.style.display = show ? 'block' : 'none';
     },
 
     loadSettingsFromLocalCache() {
@@ -235,6 +251,9 @@ const absensi = {
         console.log("Status Terakhir:", lastType);
         console.log("Jam Patokan Lembur:", jamMinLembur);
 
+        // Quote wrapper hanya muncul saat user akan absen MASUK
+        this.setQuoteWrapperVisible(!lastType);
+
         let html = '';
 
         if (!lastType) {
@@ -297,6 +316,11 @@ const absensi = {
                 location: this.locationName,
                 image: image
             };
+            // Quote hanya ikut dikirim saat absen masuk
+            if (type === 'MASUK') {
+                const ta = document.getElementById('absen-quote');
+                payload.quote = ta ? ta.value.trim().substring(0, 200) : "";
+            }
             await api.post(payload);
 
             this.setStatus("✅ Tersimpan!", "#dcfce7");
