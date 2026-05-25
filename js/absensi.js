@@ -236,20 +236,23 @@ const absensi = {
         const jamNow = now.getHours().toString().padStart(2, '0') + ":" +
                        now.getMinutes().toString().padStart(2, '0');
 
-        let rawJam = config['jamlemburmin'] || config['jam_lembur_min'] || config['jammulailembur'] || config['jamkeluar'] || "17:00";
+        // Prioritas: jam lembur personal karyawan -> global setting
+        const personalJam = (auth.user && auth.user.jam_mulai_lembur) ? String(auth.user.jam_mulai_lembur).trim() : "";
+        let rawJam = personalJam || config['jamlemburmin'] || config['jam_lembur_min'] || config['jammulailembur'] || config['jamkeluar'] || "17:00";
         let jamMinLembur = "17:00";
         const match = String(rawJam).match(/\d{1,2}:\d{2}/);
         if (match) {
             let [h, m] = match[0].split(':');
             jamMinLembur = h.padStart(2, '0') + ":" + m;
         }
+        const sumberJam = personalJam ? "personal" : "global";
 
         console.log("--- DEBUG PT. BISATANI ---");
         console.log("Tanggal Hari Ini:", todayStr);
         console.log("Tanggal Absen Terakhir:", rawDate, "→", lastDateNormalized);
         console.log("Match Hari Ini:", isActionToday);
         console.log("Status Terakhir:", lastType);
-        console.log("Jam Patokan Lembur:", jamMinLembur);
+        console.log("Jam Patokan Lembur:", jamMinLembur, "(sumber:", sumberJam + ")");
 
         // Quote wrapper hanya muncul saat user akan absen MASUK
         this.setQuoteWrapperVisible(!lastType);

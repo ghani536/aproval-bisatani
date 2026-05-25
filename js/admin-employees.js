@@ -84,6 +84,8 @@ const adminEmployees = {
                 document.getElementById('form-employee').reset();
                 document.getElementById('emp-id').value = "";
                 document.getElementById('emp-denda').value = ""; // Pastikan denda kosong saat tambah baru
+                const jl = document.getElementById('emp-jam-lembur');
+                if (jl) jl.value = "";
                 document.getElementById('modal-employee').style.display = 'flex';
             };
         }
@@ -113,7 +115,8 @@ const adminEmployees = {
                 role: document.getElementById('emp-role').value,
                 gaji_pokok: document.getElementById('emp-gaji').value,
                 bpjs: document.getElementById('emp-bpjs').value,
-                dendatelat: document.getElementById('emp-denda').value
+                dendatelat: document.getElementById('emp-denda').value,
+                jam_mulai_lembur: (document.getElementById('emp-jam-lembur') || {}).value || ""
             };
 
             const res = await api.post(payload);
@@ -150,7 +153,10 @@ const adminEmployees = {
         
         // Load data denda dari database ke input modal
         document.getElementById('emp-denda').value = emp.dendatelat || 0;
-        
+
+        const jl = document.getElementById('emp-jam-lembur');
+        if (jl) jl.value = emp.jam_mulai_lembur || "";
+
         document.getElementById('modal-employee').style.display = 'flex';
     },
 
