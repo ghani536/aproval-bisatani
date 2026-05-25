@@ -10,6 +10,21 @@ const adminEmployees = {
         this.loadEmployees();
         this.bindEvents();
         this.setupDendaOtomatis();
+        this.setupJenisGajiToggle();
+    },
+
+    setupJenisGajiToggle() {
+        const sel = document.getElementById('emp-jenis-gaji');
+        if (!sel) return;
+        const apply = () => {
+            const isPerJam = sel.value === 'per_jam';
+            const grpGaji = document.getElementById('grp-gaji-pokok');
+            const grpTarif = document.getElementById('grp-tarif-jam');
+            if (grpGaji) grpGaji.style.display = isPerJam ? 'none' : 'block';
+            if (grpTarif) grpTarif.style.display = isPerJam ? 'block' : 'none';
+        };
+        sel.addEventListener('change', apply);
+        apply();
     },
 
     setupDendaOtomatis() {
@@ -51,9 +66,10 @@ const adminEmployees = {
         }
 
         const html = this.employees.map((emp, index) => {
-            // Mapping denda dari JSON (Pastikan Code.gs sudah mengirim property 'dendatelat')
-            const dendaVal = emp.dendatelat || 0;
-            const gajiVal = Number(emp.gaji_pokok || 0).toLocaleString('id-ID');
+            const isPerJam = emp.jenis_gaji === 'per_jam';
+            const gajiCell = isPerJam
+                ? `<span style="color:#6366f1; font-weight:600;">Rp ${Number(emp.tarif_per_jam || 0).toLocaleString('id-ID')}</span><br><small style="color:#94a3b8;">/jam</small>`
+                : `<span>Rp ${Number(emp.gaji_pokok || 0).toLocaleString('id-ID')}</span><br><small style="color:#94a3b8;">/bulan</small>`;
 
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -62,7 +78,7 @@ const adminEmployees = {
                     <td style="padding:12px;">${emp.email || '-'}</td>
                     <td style="padding:12px;">${emp.department || '-'}</td>
                     <td style="padding:12px;">${emp.position || '-'}</td>
-                    <td style="padding:12px; font-weight:500;">Rp ${gajiVal}</td>
+                    <td style="padding:12px; font-weight:500;">${gajiCell}</td>
                     <td style="padding:12px; text-align:center;">
                         <div style="display:flex; gap:8px; justify-content:center;">
                             <button onclick="adminEmployees.prepareEdit('${emp.id}')" style="background:#f59e0b; color:white; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer;" title="Edit"><i class="fas fa-edit"></i></button>
@@ -86,6 +102,11 @@ const adminEmployees = {
                 document.getElementById('emp-denda').value = ""; // Pastikan denda kosong saat tambah baru
                 const jl = document.getElementById('emp-jam-lembur');
                 if (jl) jl.value = "";
+                const jenisGajiEl = document.getElementById('emp-jenis-gaji');
+                if (jenisGajiEl) {
+                    jenisGajiEl.value = 'bulanan';
+                    jenisGajiEl.dispatchEvent(new Event('change'));
+                }
                 document.getElementById('modal-employee').style.display = 'flex';
             };
         }
@@ -105,6 +126,8 @@ const adminEmployees = {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
             
+            const jenisGajiEl = document.getElementById('emp-jenis-gaji');
+            const tarifJamEl = document.getElementById('emp-tarif-jam');
             const payload = {
                 action: 'saveEmployee',
                 id: document.getElementById('emp-id').value,
@@ -116,7 +139,9 @@ const adminEmployees = {
                 gaji_pokok: document.getElementById('emp-gaji').value,
                 bpjs: document.getElementById('emp-bpjs').value,
                 dendatelat: document.getElementById('emp-denda').value,
-                jam_mulai_lembur: (document.getElementById('emp-jam-lembur') || {}).value || ""
+                jam_mulai_lembur: (document.getElementById('emp-jam-lembur') || {}).value || "",
+                jenis_gaji: jenisGajiEl ? jenisGajiEl.value : "bulanan",
+                tarif_per_jam: tarifJamEl ? (tarifJamEl.value || "0") : "0"
             };
 
             const res = await api.post(payload);
@@ -156,6 +181,14 @@ const adminEmployees = {
 
         const jl = document.getElementById('emp-jam-lembur');
         if (jl) jl.value = emp.jam_mulai_lembur || "";
+
+        const jenisGajiEl = document.getElementById('emp-jenis-gaji');
+        const tarifJamEl = document.getElementById('emp-tarif-jam');
+        if (jenisGajiEl) {
+            jenisGajiEl.value = (emp.jenis_gaji === 'per_jam') ? 'per_jam' : 'bulanan';
+            jenisGajiEl.dispatchEvent(new Event('change'));
+        }
+        if (tarifJamEl) tarifJamEl.value = emp.tarif_per_jam || 0;
 
         document.getElementById('modal-employee').style.display = 'flex';
     },

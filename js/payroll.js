@@ -58,6 +58,8 @@ const payroll = {
 
         const tarifLembur = parseInt(this.config.overtime_rate || 10000);
         const gajiPokok = parseFloat(emp.gaji_pokok || 0);
+        const tarifPerJam = parseFloat(emp.tarif_per_jam || 0);
+        const isPerJam = (emp.jenis_gaji === 'per_jam');
         let dendaPerMenit = parseFloat(emp.dendatelat || 0);
 
         if (dendaPerMenit <= 0 && gajiPokok > 0) {
@@ -85,17 +87,34 @@ const payroll = {
         const bpjs = parseInt(emp.bpjs || 0);
         const bonusLembur = Math.round(jamLemburTotal * tarifLembur);
         const nominalDenda = Math.round(totalMenitTelat * dendaPerMenit);
-        const totalGaji = (gajiPokok + bonusLembur) - (bpjs + nominalDenda);
+
+        let totalGaji;
+        let basisGaji;
+        let jamKerjaTotal = 0;
+
+        if (isPerJam) {
+            // Per jam: total_jam = (hari_hadir × 8) + jam_lembur; gaji = total_jam × tarif_per_jam
+            jamKerjaTotal = (hadirCount * 8) + jamLemburTotal;
+            basisGaji = Math.round(jamKerjaTotal * tarifPerJam);
+            totalGaji = basisGaji - bpjs;
+        } else {
+            basisGaji = gajiPokok;
+            totalGaji = (gajiPokok + bonusLembur) - (bpjs + nominalDenda);
+        }
 
         return {
             id: emp.id,
             name: emp.name,
+            jenis_gaji: isPerJam ? 'per_jam' : 'bulanan',
+            tarifPerJam: tarifPerJam,
+            jamKerjaTotal: jamKerjaTotal,
             gapok: gajiPokok,
+            basisGaji: basisGaji,
             hadir: hadirCount,
             lemburJam: jamLemburTotal,
-            bonusLembur: bonusLembur,
+            bonusLembur: isPerJam ? 0 : bonusLembur,
             menitTelat: totalMenitTelat,
-            dendaTelat: nominalDenda,
+            dendaTelat: isPerJam ? 0 : nominalDenda,
             bpjs: bpjs,
             totalGaji: totalGaji
         };
@@ -104,14 +123,19 @@ const payroll = {
     renderTable(data) {
         const tbody = document.getElementById('payroll-table-body');
         if (!tbody) return;
-        tbody.innerHTML = data.map(p => `
+        tbody.innerHTML = data.map(p => {
+            const isPerJam = p.jenis_gaji === 'per_jam';
+            const basisCell = isPerJam
+                ? `<small style="color:#6366f1;">${p.jamKerjaTotal.toFixed(2)}j × Rp ${p.tarifPerJam.toLocaleString('id-ID')}</small><br>Rp ${p.basisGaji.toLocaleString('id-ID')}`
+                : `Rp ${p.gapok.toLocaleString('id-ID')}`;
+            return `
             <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding:12px;"><strong>${p.name}</strong><br><small style="color:#64748b;">ID: ${p.id}</small></td>
-                <td>Rp ${p.gapok.toLocaleString('id-ID')}</td>
+                <td style="padding:12px;"><strong>${p.name}</strong><br><small style="color:${isPerJam ? '#6366f1' : '#64748b'};">${isPerJam ? 'PER JAM' : 'BULANAN'} · ID: ${p.id}</small></td>
+                <td>${basisCell}</td>
                 <td style="text-align:center;">${p.hadir} Hari</td>
                 <td style="text-align:center; font-weight:bold; color:#2563eb;">${p.lemburJam.toFixed(2)}j</td>
-                <td style="color:#10b981; font-weight:600;">+${p.bonusLembur.toLocaleString('id-ID')}</td>
-                <td style="color:#ef4444;">-${p.dendaTelat.toLocaleString('id-ID')}<br><small>(${p.menitTelat} m)</small></td>
+                <td style="color:#10b981; font-weight:600;">${isPerJam ? '<small>(incl. di basis)</small>' : '+' + p.bonusLembur.toLocaleString('id-ID')}</td>
+                <td style="color:#ef4444;">${isPerJam ? '<small>n/a</small>' : '-' + p.dendaTelat.toLocaleString('id-ID') + '<br><small>(' + p.menitTelat + ' m)</small>'}</td>
                 <td style="color:#ef4444;">-${p.bpjs.toLocaleString('id-ID')}</td>
                 <td style="background:#f0fdf4; font-weight:700; color:#166534;">Rp ${p.totalGaji.toLocaleString('id-ID')}</td>
                 <td style="text-align:center;">
@@ -120,7 +144,7 @@ const payroll = {
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `; }).join('');
     },
 
     showSlip(id) {
@@ -140,15 +164,24 @@ const payroll = {
                 </div>
                 
                 <table style="width:100%; border-collapse:collapse; font-size:14px; font-family:'Courier New', Courier, monospace;">
-                    <tr><td style="width:120px; padding:5px 0;">NAMA</td><td>: <strong>${data.name.toUpperCase()}</strong></td></tr>
+                    <tr><td style="width:140px; padding:5px 0;">NAMA</td><td>: <strong>${data.name.toUpperCase()}</strong></td></tr>
                     <tr><td style="padding:5px 0;">ID KARYAWAN</td><td>: ${data.id}</td></tr>
+                    <tr><td style="padding:5px 0;">JENIS PENGGAJIAN</td><td>: <strong>${data.jenis_gaji === 'per_jam' ? 'PER JAM' : 'BULANAN'}</strong></td></tr>
                     <tr><td colspan="2"><hr style="border:0; border-top:1px solid #cbd5e1; margin:15px 0;"></td></tr>
-                    
+
+                    ${data.jenis_gaji === 'per_jam' ? `
+                    <tr><td style="padding:8px 0;">JAM KERJA</td><td style="text-align:right;">${(data.hadir*8).toFixed(0)}j (${data.hadir} hari × 8j)</td></tr>
+                    <tr><td style="padding:8px 0;">JAM LEMBUR</td><td style="text-align:right;">${data.lemburJam.toFixed(2)}j</td></tr>
+                    <tr><td style="padding:8px 0;">TARIF / JAM</td><td style="text-align:right;">Rp ${data.tarifPerJam.toLocaleString('id-ID')}</td></tr>
+                    <tr><td style="padding:8px 0; color:#10b981;"><strong>(=) BASIS GAJI (${data.jamKerjaTotal.toFixed(2)}j)</strong></td><td style="text-align:right; color:#10b981;"><strong>Rp ${data.basisGaji.toLocaleString('id-ID')}</strong></td></tr>
+                    <tr><td style="padding:8px 0; color:#ef4444;">(-) POTONGAN BPJS</td><td style="text-align:right; color:#ef4444;">- Rp ${data.bpjs.toLocaleString('id-ID')}</td></tr>
+                    ` : `
                     <tr><td style="padding:8px 0;">GAJI POKOK</td><td style="text-align:right;">Rp ${data.gapok.toLocaleString('id-ID')}</td></tr>
                     <tr><td style="padding:8px 0; color:#10b981;">(+) LEMBUR (${data.lemburJam.toFixed(2)}j)</td><td style="text-align:right; color:#10b981;">+ Rp ${data.bonusLembur.toLocaleString('id-ID')}</td></tr>
                     <tr><td style="padding:8px 0; color:#ef4444;">(-) DENDA TELAT (${data.menitTelat} Mnt)</td><td style="text-align:right; color:#ef4444;">- Rp ${data.dendaTelat.toLocaleString('id-ID')}</td></tr>
                     <tr><td style="padding:8px 0; color:#ef4444;">(-) POTONGAN BPJS</td><td style="text-align:right; color:#ef4444;">- Rp ${data.bpjs.toLocaleString('id-ID')}</td></tr>
-                    
+                    `}
+
                     <tr><td colspan="2"><hr style="border:0; border-top:2px solid #1e293b; margin:15px 0;"></td></tr>
                     <tr style="font-weight:bold; font-size:18px;">
                         <td style="color:#1e293b; padding:10px 0;">TOTAL BERSIH</td>
