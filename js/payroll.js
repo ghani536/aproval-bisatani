@@ -12,7 +12,53 @@ const payroll = {
         const yearInput = document.getElementById('payroll-year');
         const monthInput = document.getElementById('payroll-month');
         if (yearInput) yearInput.value = new Date().getFullYear();
-        if (monthInput) monthInput.value = new Date().getMonth(); 
+        if (monthInput) monthInput.value = new Date().getMonth();
+    },
+
+    // Bonus custom per (tahun, bulan, empId) disimpan di localStorage
+    bonusKey(year, month) {
+        return `bisatani_bonus_${year}_${month}`;
+    },
+    loadBonusMap() {
+        try {
+            const month = parseInt(document.getElementById('payroll-month').value);
+            const year = parseInt(document.getElementById('payroll-year').value);
+            const raw = localStorage.getItem(this.bonusKey(year, month));
+            return raw ? JSON.parse(raw) : {};
+        } catch (e) { return {}; }
+    },
+    saveBonusMap(map) {
+        try {
+            const month = parseInt(document.getElementById('payroll-month').value);
+            const year = parseInt(document.getElementById('payroll-year').value);
+            localStorage.setItem(this.bonusKey(year, month), JSON.stringify(map));
+        } catch (e) {}
+    },
+    setBonus(empId, amount) {
+        const map = this.loadBonusMap();
+        const num = parseFloat(String(amount).replace(/[^\d.-]/g, '')) || 0;
+        if (num > 0) map[empId] = num;
+        else delete map[empId];
+        this.saveBonusMap(map);
+        // Update calculated data + total
+        const row = this.calculatedData.find(d => String(d.id) === String(empId));
+        if (row) {
+            row.bonusCustom = num;
+            row.totalGaji = this.computeFinalTotal(row);
+            // Re-render only this row's total cell (in-place update)
+            this.refreshTotalCell(empId, row.totalGaji);
+        }
+    },
+    refreshTotalCell(empId, total) {
+        const cell = document.querySelector(`[data-total-id="${empId}"]`);
+        if (cell) cell.textContent = `Rp ${Number(total).toLocaleString('id-ID')}`;
+    },
+    computeFinalTotal(p) {
+        const bonus = parseFloat(p.bonusCustom || 0);
+        if (p.jenis_gaji === 'per_jam') {
+            return p.basisGaji - p.bpjs + bonus;
+        }
+        return (p.gapok + p.bonusLembur + bonus) - (p.bpjs + p.dendaTelat);
     },
 
     async calculate() {
@@ -21,7 +67,7 @@ const payroll = {
         try {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px;"><i class="fas fa-sync fa-spin"></i> Sinkronisasi data...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:30px;"><i class="fas fa-sync fa-spin"></i> Sinkronisasi data...</td></tr>';
 
             const month = parseInt(document.getElementById('payroll-month').value);
             const year = parseInt(document.getElementById('payroll-year').value);
@@ -40,6 +86,12 @@ const payroll = {
             const endDate = new Date(year, month, 25, 23, 59, 59);
 
             this.calculatedData = this.employees.map(emp => this.calculateSingleEmployee(emp, startDate, endDate));
+            // Apply bonus custom dari localStorage ke calculatedData + recalc total
+            const bonusMap = this.loadBonusMap();
+            this.calculatedData.forEach(row => {
+                row.bonusCustom = parseFloat(bonusMap[row.id] || 0);
+                row.totalGaji = this.computeFinalTotal(row);
+            });
             this.renderTable(this.calculatedData);
 
         } catch (e) {
@@ -133,6 +185,7 @@ const payroll = {
             const basisCell = isPerJam
                 ? `<small style="color:#6366f1;">${p.jamKerjaTotal.toFixed(2)}j × Rp ${p.tarifPerJam.toLocaleString('id-ID')}</small><br>Rp ${p.basisGaji.toLocaleString('id-ID')}`
                 : `Rp ${p.gapok.toLocaleString('id-ID')}`;
+            const bonusCustomVal = Number(p.bonusCustom || 0);
             return `
             <tr style="border-bottom: 1px solid #f1f5f9;">
                 <td style="padding:12px;"><strong>${p.name}</strong><br><small style="color:${isPerJam ? '#6366f1' : '#64748b'};">${isPerJam ? 'PER JAM' : 'BULANAN'} · ID: ${p.id}</small></td>
@@ -142,7 +195,12 @@ const payroll = {
                 <td style="color:#10b981; font-weight:600;">${isPerJam ? '<small>(incl. di basis)</small>' : '+' + p.bonusLembur.toLocaleString('id-ID')}</td>
                 <td style="color:#ef4444;">${isPerJam ? '<small>n/a</small>' : '-' + p.dendaTelat.toLocaleString('id-ID') + '<br><small>(' + p.menitTelat + ' m)</small>'}</td>
                 <td style="color:#ef4444;">-${p.bpjs.toLocaleString('id-ID')}</td>
-                <td style="background:#f0fdf4; font-weight:700; color:#166534;">Rp ${p.totalGaji.toLocaleString('id-ID')}</td>
+                <td style="background:#fef9c3; padding:6px;">
+                    <input type="number" min="0" step="1000" value="${bonusCustomVal || ''}" placeholder="0"
+                        onchange="payroll.setBonus('${String(p.id).replace(/'/g,"\\'")}', this.value)"
+                        style="width:100px; padding:6px 8px; border:1px solid #fbbf24; border-radius:6px; background:#fff; font-weight:600; color:#854d0e; text-align:right;" />
+                </td>
+                <td data-total-id="${p.id}" style="background:#f0fdf4; font-weight:700; color:#166534;">Rp ${p.totalGaji.toLocaleString('id-ID')}</td>
                 <td style="text-align:center;">
                     <button onclick="payroll.showSlip('${p.id}')" style="background:#6366f1; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;">
                         <i class="fas fa-file-invoice"></i> Slip
@@ -186,6 +244,9 @@ const payroll = {
                     <tr><td style="padding:8px 0; color:#ef4444;">(-) DENDA TELAT (${data.menitTelat} Mnt)</td><td style="text-align:right; color:#ef4444;">- Rp ${data.dendaTelat.toLocaleString('id-ID')}</td></tr>
                     <tr><td style="padding:8px 0; color:#ef4444;">(-) POTONGAN BPJS</td><td style="text-align:right; color:#ef4444;">- Rp ${data.bpjs.toLocaleString('id-ID')}</td></tr>
                     `}
+                    ${Number(data.bonusCustom || 0) > 0 ? `
+                    <tr><td style="padding:8px 0; color:#854d0e;">(+) BONUS CUSTOM</td><td style="text-align:right; color:#854d0e;">+ Rp ${Number(data.bonusCustom).toLocaleString('id-ID')}</td></tr>
+                    ` : ''}
 
                     <tr><td colspan="2"><hr style="border:0; border-top:2px solid #1e293b; margin:15px 0;"></td></tr>
                     <tr style="font-weight:bold; font-size:18px;">
