@@ -11,6 +11,26 @@ const adminEmployees = {
         this.bindEvents();
         this.setupDendaOtomatis();
         this.setupJenisGajiToggle();
+        this.setupPasswordToggle();
+    },
+
+    setupPasswordToggle() {
+        const toggle = document.getElementById('emp-password-toggle');
+        const input = document.getElementById('emp-password');
+        if (!toggle || !input || toggle.dataset.bound === '1') return;
+        // Default sembunyi (type=password)
+        input.type = 'password';
+        toggle.onclick = (e) => {
+            e.preventDefault();
+            const hidden = input.type === 'password';
+            input.type = hidden ? 'text' : 'password';
+            const icon = toggle.querySelector('i');
+            if (icon) {
+                icon.classList.remove(hidden ? 'fa-eye-slash' : 'fa-eye');
+                icon.classList.add(hidden ? 'fa-eye' : 'fa-eye-slash');
+            }
+        };
+        toggle.dataset.bound = '1';
     },
 
     setupJenisGajiToggle() {
@@ -40,19 +60,26 @@ const adminEmployees = {
         }
     },
 
+    passwordVisibility: {}, // id -> bool
+
     async loadEmployees() {
         const tbody = document.getElementById('employees-table-body');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px;"><i class="fas fa-sync fa-spin"></i> Memuat data terbaru...</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px;"><i class="fas fa-sync fa-spin"></i> Memuat data terbaru...</td></tr>';
         try {
             const res = await api.post({ action: 'getEmployees' });
             if (res.success) {
                 this.employees = res.data || [];
                 this.renderTable();
             }
-        } catch (e) { 
-            console.error("Error Load:", e); 
-            if(tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:red;">Gagal memuat data. Periksa koneksi.</td></tr>';
+        } catch (e) {
+            console.error("Error Load:", e);
+            if(tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:red;">Gagal memuat data. Periksa koneksi.</td></tr>';
         }
+    },
+
+    togglePasswordVisible(id) {
+        this.passwordVisibility[id] = !this.passwordVisibility[id];
+        this.renderTable();
     },
 
     renderTable() {
@@ -61,7 +88,7 @@ const adminEmployees = {
         tbody.innerHTML = '';
 
         if (this.employees.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px;">Belum ada data karyawan terpajang.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px;">Belum ada data karyawan terpajang.</td></tr>';
             return;
         }
 
@@ -71,6 +98,20 @@ const adminEmployees = {
                 ? `<span style="color:#6366f1; font-weight:600;">Rp ${Number(emp.tarif_per_jam || 0).toLocaleString('id-ID')}</span><br><small style="color:#94a3b8;">/jam</small>`
                 : `<span>Rp ${Number(emp.gaji_pokok || 0).toLocaleString('id-ID')}</span><br><small style="color:#94a3b8;">/bulan</small>`;
 
+            const pwdVisible = !!this.passwordVisibility[emp.id];
+            const rawPwd = emp.password || '';
+            const pwdDisplay = pwdVisible
+                ? `<code style="background:#f1f5f9; padding:3px 6px; border-radius:4px; font-size:12px;">${rawPwd || '(kosong)'}</code>`
+                : `<span style="letter-spacing:2px; color:#94a3b8;">${'•'.repeat(Math.min(rawPwd.length, 8) || 4)}</span>`;
+            const pwdCell = `
+                <div style="display:flex; align-items:center; gap:6px; justify-content:center;">
+                    ${pwdDisplay}
+                    <button onclick="adminEmployees.togglePasswordVisible('${String(emp.id).replace(/'/g, "\\'")}')" style="background:transparent; border:none; color:#64748b; cursor:pointer; padding:2px;" title="${pwdVisible ? 'Sembunyikan' : 'Tampilkan'}">
+                        <i class="fas ${pwdVisible ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                    </button>
+                </div>
+            `;
+
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="text-align:center; padding:12px;">${index + 1}</td>
@@ -79,6 +120,7 @@ const adminEmployees = {
                     <td style="padding:12px;">${emp.department || '-'}</td>
                     <td style="padding:12px;">${emp.position || '-'}</td>
                     <td style="padding:12px; font-weight:500;">${gajiCell}</td>
+                    <td style="padding:12px; text-align:center;">${pwdCell}</td>
                     <td style="padding:12px; text-align:center;">
                         <div style="display:flex; gap:8px; justify-content:center;">
                             <button onclick="adminEmployees.prepareEdit('${emp.id}')" style="background:#f59e0b; color:white; border:none; width:32px; height:32px; border-radius:6px; cursor:pointer;" title="Edit"><i class="fas fa-edit"></i></button>
@@ -107,6 +149,11 @@ const adminEmployees = {
                     jenisGajiEl.value = 'bulanan';
                     jenisGajiEl.dispatchEvent(new Event('change'));
                 }
+                const pwd = document.getElementById('emp-password');
+                if (pwd) {
+                    pwd.value = "";
+                    pwd.placeholder = "Min. 4 karakter (wajib diisi)";
+                }
                 document.getElementById('modal-employee').style.display = 'flex';
             };
         }
@@ -128,6 +175,7 @@ const adminEmployees = {
             
             const jenisGajiEl = document.getElementById('emp-jenis-gaji');
             const tarifJamEl = document.getElementById('emp-tarif-jam');
+            const pwdEl = document.getElementById('emp-password');
             const payload = {
                 action: 'saveEmployee',
                 id: document.getElementById('emp-id').value,
@@ -143,6 +191,10 @@ const adminEmployees = {
                 jenis_gaji: jenisGajiEl ? jenisGajiEl.value : "bulanan",
                 tarif_per_jam: tarifJamEl ? (tarifJamEl.value || "0") : "0"
             };
+            // Password: hanya kirim kalau diisi (kosong = backend pakai password lama)
+            if (pwdEl && pwdEl.value.trim() !== "") {
+                payload.password = pwdEl.value.trim();
+            }
 
             const res = await api.post(payload);
             if (res.success) {
@@ -189,6 +241,13 @@ const adminEmployees = {
             jenisGajiEl.dispatchEvent(new Event('change'));
         }
         if (tarifJamEl) tarifJamEl.value = emp.tarif_per_jam || 0;
+
+        // Password: clear field, placeholder show current
+        const pwdEl = document.getElementById('emp-password');
+        if (pwdEl) {
+            pwdEl.value = "";
+            pwdEl.placeholder = emp.password ? `Saat ini: ${emp.password} (kosongkan = tetap)` : "Belum ada password";
+        }
 
         document.getElementById('modal-employee').style.display = 'flex';
     },
