@@ -29,7 +29,7 @@ const toast = {
 window.storage = storage;
 window.toast = toast;
 
-// Jam Digital
+// Jam Digital + Hamburger sidebar
 document.addEventListener('DOMContentLoaded', () => {
     const timeDisplay = document.getElementById('current-time');
     if (timeDisplay) {
@@ -40,5 +40,34 @@ document.addEventListener('DOMContentLoaded', () => {
             if (timeEl) timeEl.textContent = now.toLocaleTimeString('id-ID');
             if (dateEl) dateEl.textContent = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         }, 1000);
+    }
+
+    // Hamburger sidebar toggle (mobile/half-screen)
+    const menuBtn = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const closeSidebar = () => {
+        if (sidebar) sidebar.classList.remove('mobile-open');
+        if (backdrop) backdrop.classList.remove('active');
+    };
+    const openSidebar = () => {
+        if (sidebar) sidebar.classList.add('mobile-open');
+        if (backdrop) backdrop.classList.add('active');
+    };
+    if (menuBtn && sidebar) {
+        menuBtn.onclick = (e) => {
+            e.preventDefault();
+            if (sidebar.classList.contains('mobile-open')) closeSidebar();
+            else openSidebar();
+        };
+    }
+    if (backdrop) backdrop.onclick = closeSidebar;
+    // Auto-close sidebar saat klik nav item di mobile
+    if (sidebar) {
+        sidebar.querySelectorAll('.nav-link, .nav-item').forEach(el => {
+            el.addEventListener('click', () => {
+                if (window.innerWidth <= 768) closeSidebar();
+            });
+        });
     }
 });

@@ -73,6 +73,58 @@
             display: none; position: fixed; z-index: 9999; left: 0; top: 0;
             width: 100%; height: 100%; background: rgba(0,0,0,0.6);
             align-items: center; justify-content: center;
+            padding: 20px; box-sizing: border-box;
+        }
+        .modal-custom .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* Hamburger: hidden by default, shown on small viewport */
+        .mobile-menu-toggle {
+            display: none;
+            background: transparent;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 18px;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            margin-right: 12px;
+            align-items: center;
+            justify-content: center;
+        }
+        .mobile-menu-toggle:hover {
+            background: #f1f5f9;
+            color: #10b981;
+        }
+
+        /* Mobile sidebar slide-in via hamburger */
+        @media (max-width: 768px) {
+            .sidebar.mobile-open {
+                display: flex !important;
+                flex-direction: column;
+                position: fixed;
+                top: 0; left: 0; bottom: 0;
+                width: 280px;
+                z-index: 9500;
+                background: #fff;
+                box-shadow: 2px 0 25px rgba(0,0,0,0.2);
+                overflow-y: auto;
+                animation: sidebarSlideIn 0.25s ease-out;
+            }
+            .sidebar-backdrop {
+                display: none;
+                position: fixed; inset: 0;
+                background: rgba(0,0,0,0.45);
+                z-index: 9400;
+            }
+            .sidebar-backdrop.active { display: block; }
+            @keyframes sidebarSlideIn {
+                from { transform: translateX(-100%); }
+                to { transform: translateX(0); }
+            }
         }
 
         .badge-masuk { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
@@ -161,6 +213,7 @@
                 </div>
             </div>
         </aside>
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
         <main class="main-content">
             <header class="top-bar">
