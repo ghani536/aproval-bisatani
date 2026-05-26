@@ -7,6 +7,7 @@ const payroll = {
     employees: [],
     attendance: [],
     calculatedData: [],
+    sentMap: {}, // userId -> {timestampDisplay, totalGaji, email}
 
     init() {
         const yearInput = document.getElementById('payroll-year');
@@ -71,12 +72,19 @@ const payroll = {
 
             const month = parseInt(document.getElementById('payroll-month').value);
             const year = parseInt(document.getElementById('payroll-year').value);
+            const bulanNama = document.getElementById('payroll-month').options[document.getElementById('payroll-month').selectedIndex].text;
 
-            const [resEmp, resCfg, resAtt] = await Promise.all([
+            const [resEmp, resCfg, resAtt, resSent] = await Promise.all([
                 api.post({ action: 'getEmployees' }),
                 api.post({ action: 'getSettings' }),
-                api.post({ action: 'getAllAttendanceData' })
+                api.post({ action: 'getAllAttendanceData' }),
+                api.post({ action: 'getPayrollSentLog', bulan: bulanNama, tahun: String(year) })
             ]);
+
+            this.sentMap = {};
+            if (resSent && resSent.success && Array.isArray(resSent.data)) {
+                resSent.data.forEach(s => { this.sentMap[String(s.userId)] = s; });
+            }
 
             this.employees = resEmp.data || [];
             this.attendance = resAtt.data || [];
@@ -186,38 +194,63 @@ const payroll = {
                 ? `<small style="color:#6366f1;">${p.jamKerjaTotal.toFixed(2)}j × Rp ${p.tarifPerJam.toLocaleString('id-ID')}</small><br>Rp ${p.basisGaji.toLocaleString('id-ID')}`
                 : `Rp ${p.gapok.toLocaleString('id-ID')}`;
             const bonusCustomVal = Number(p.bonusCustom || 0);
+            const sent = this.sentMap[String(p.id)];
+            const isSent = !!sent;
+
+            const rowStyle = isSent
+                ? 'border-bottom:1px solid #e2e8f0; background:#f8fafc; opacity:0.78;'
+                : 'border-bottom:1px solid #f1f5f9;';
+            const lockIcon = isSent ? '<i class="fas fa-lock" style="color:#10b981; font-size:10px; margin-right:4px;"></i>' : '';
+            const bonusInput = isSent
+                ? `<div style="padding:8px; text-align:right; font-weight:600; color:#854d0e;">Rp ${bonusCustomVal.toLocaleString('id-ID')}</div>`
+                : `<input type="number" min="0" step="1000" value="${bonusCustomVal || ''}" placeholder="0"
+                        onchange="payroll.setBonus('${String(p.id).replace(/'/g,"\\'")}', this.value)"
+                        style="width:100px; padding:6px 8px; border:1px solid #fbbf24; border-radius:6px; background:#fff; font-weight:600; color:#854d0e; text-align:right;" />`;
+            const aksiCell = isSent ? `
+                <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:10px; font-size:10px; font-weight:700;">
+                        <i class="fas fa-check-circle"></i> TERKIRIM
+                    </span>
+                    <small style="color:#64748b; font-size:10px;">${sent.timestampDisplay || ''}</small>
+                    <div style="display:flex; gap:4px;">
+                        <button onclick="payroll.showSlip('${p.id}')" title="Lihat slip"
+                            style="background:#94a3b8; color:white; border:none; padding:5px 8px; border-radius:6px; cursor:pointer; font-size:11px;">
+                            <i class="fas fa-file-invoice"></i>
+                        </button>
+                        <button onclick="payroll.sendEmail('${p.id}', true)" title="Kirim ulang slip"
+                            style="background:#f59e0b; color:white; border:none; padding:5px 8px; border-radius:6px; cursor:pointer; font-size:11px;">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                    </div>
+                </div>` : `
+                <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+                    <button onclick="payroll.showSlip('${p.id}')" title="Lihat / Cetak Slip"
+                        style="background:#6366f1; color:white; border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12px;">
+                        <i class="fas fa-file-invoice"></i>
+                    </button>
+                    <button onclick="payroll.sendEmail('${p.id}')" title="Kirim slip via email"
+                        style="background:#10b981; color:white; border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12px;">
+                        <i class="fas fa-envelope"></i>
+                    </button>
+                </div>`;
+
             return `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding:12px;"><strong>${p.name}</strong><br><small style="color:${isPerJam ? '#6366f1' : '#64748b'};">${isPerJam ? 'PER JAM' : 'BULANAN'} · ID: ${p.id}</small></td>
+            <tr style="${rowStyle}">
+                <td style="padding:12px;">${lockIcon}<strong>${p.name}</strong><br><small style="color:${isPerJam ? '#6366f1' : '#64748b'};">${isPerJam ? 'PER JAM' : 'BULANAN'} · ID: ${p.id}</small></td>
                 <td>${basisCell}</td>
                 <td style="text-align:center;">${p.hadir} Hari</td>
                 <td style="text-align:center; font-weight:bold; color:#2563eb;">${p.lemburJam.toFixed(2)}j</td>
                 <td style="color:#10b981; font-weight:600;">${isPerJam ? '<small>(incl. di basis)</small>' : '+' + p.bonusLembur.toLocaleString('id-ID')}</td>
                 <td style="color:#ef4444;">${isPerJam ? '<small>n/a</small>' : '-' + p.dendaTelat.toLocaleString('id-ID') + '<br><small>(' + p.menitTelat + ' m)</small>'}</td>
                 <td style="color:#ef4444;">-${p.bpjs.toLocaleString('id-ID')}</td>
-                <td style="background:#fef9c3; padding:6px;">
-                    <input type="number" min="0" step="1000" value="${bonusCustomVal || ''}" placeholder="0"
-                        onchange="payroll.setBonus('${String(p.id).replace(/'/g,"\\'")}', this.value)"
-                        style="width:100px; padding:6px 8px; border:1px solid #fbbf24; border-radius:6px; background:#fff; font-weight:600; color:#854d0e; text-align:right;" />
-                </td>
+                <td style="background:${isSent ? '#f1f5f9' : '#fef9c3'}; padding:6px;">${bonusInput}</td>
                 <td data-total-id="${p.id}" style="background:#f0fdf4; font-weight:700; color:#166534;">Rp ${p.totalGaji.toLocaleString('id-ID')}</td>
-                <td style="text-align:center;">
-                    <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
-                        <button onclick="payroll.showSlip('${p.id}')" title="Lihat / Cetak Slip"
-                            style="background:#6366f1; color:white; border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12px;">
-                            <i class="fas fa-file-invoice"></i>
-                        </button>
-                        <button onclick="payroll.sendEmail('${p.id}')" title="Kirim slip via email"
-                            style="background:#10b981; color:white; border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12px;">
-                            <i class="fas fa-envelope"></i>
-                        </button>
-                    </div>
-                </td>
+                <td style="text-align:center;">${aksiCell}</td>
             </tr>
         `; }).join('');
     },
 
-    async sendEmail(id) {
+    async sendEmail(id, isResend) {
         const data = this.calculatedData.find(d => String(d.id) === String(id));
         if (!data) return alert("Data tidak ditemukan");
 
@@ -228,7 +261,10 @@ const payroll = {
             return alert(`❌ Email karyawan ${data.name} tidak valid: "${email}". Tambahkan email di Data Karyawan dulu.`);
         }
 
-        if (!confirm(`Kirim slip gaji ke ${data.name} (${email})?`)) return;
+        const confirmMsg = isResend
+            ? `⚠️ Kirim ULANG slip gaji ke ${data.name} (${email})?\n\nKaryawan akan menerima slip kedua kali.`
+            : `Kirim slip gaji ke ${data.name} (${email})?`;
+        if (!confirm(confirmMsg)) return;
 
         const bulanNama = document.getElementById('payroll-month').options[document.getElementById('payroll-month').selectedIndex].text;
         const tahun = document.getElementById('payroll-year').value;
@@ -262,12 +298,21 @@ const payroll = {
             const res = await api.post(payload);
             if (res && res.success) {
                 alert(`✅ ${res.message || 'Slip terkirim ke ' + email}`);
+                // Update sentMap supaya row langsung jadi locked
+                this.sentMap[String(id)] = {
+                    userId: String(id),
+                    timestampDisplay: (res.sent && res.sent.timestampDisplay) || 'baru saja',
+                    totalGaji: data.totalGaji,
+                    email: email
+                };
+                // Re-render seluruh tabel supaya UI sync
+                this.renderTable(this.calculatedData);
             } else {
                 alert("❌ Gagal kirim: " + (res.error || "Cek koneksi"));
+                if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
             }
         } catch (e) {
             alert("❌ Error: " + e.message);
-        } finally {
             if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
         }
     },
