@@ -18,6 +18,7 @@ const absensi = {
         this.startCamera();
         this.getLocation();
         this.bindQuoteCounter();
+        this.startLiveClock();
 
         // Render instant dari cache (kalau ada), lalu sync GAS di background
         if (this.statusCache !== null) {
@@ -25,6 +26,78 @@ const absensi = {
             this.refreshFromServer();
         } else {
             await this.renderButtons();
+        }
+    },
+
+    // Live clock + durasi sejak action terakhir
+    startLiveClock() {
+        if (this._clockTimer) return; // sudah jalan
+        const tick = () => this.tickClock();
+        tick();
+        this._clockTimer = setInterval(tick, 1000);
+    },
+
+    tickClock() {
+        const clockEl = document.getElementById('live-clock');
+        const durEl = document.getElementById('live-duration');
+        const now = new Date();
+        if (clockEl) {
+            const hh = String(now.getHours()).padStart(2,'0');
+            const mm = String(now.getMinutes()).padStart(2,'0');
+            const ss = String(now.getSeconds()).padStart(2,'0');
+            clockEl.textContent = `${hh}:${mm}:${ss}`;
+        }
+        if (!durEl) return;
+
+        // Tentukan timestamp action terakhir
+        const last = this.statusCache;
+        const todayStr = this.todayStr();
+        if (!last) {
+            durEl.innerHTML = '<i class="far fa-clock"></i> Belum absen hari ini';
+            durEl.style.color = '#94a3b8';
+            return;
+        }
+        const lastDateStr = this.normalizeDateStr(last.date || last.timestamp || last.timestampISO);
+        if (lastDateStr !== todayStr) {
+            durEl.innerHTML = '<i class="far fa-clock"></i> Belum absen hari ini';
+            durEl.style.color = '#94a3b8';
+            return;
+        }
+
+        const tsStr = last.timestampISO || last.timestamp;
+        const ts = tsStr ? new Date(tsStr) : null;
+        const lastType = last.type || last.Tipe;
+
+        if (!ts || isNaN(ts)) {
+            // Tidak ada timestamp valid
+            durEl.innerHTML = lastType === 'PULANG'
+                ? '<i class="fas fa-check"></i> Tugas selesai hari ini'
+                : '<i class="far fa-clock"></i> Status: ' + lastType;
+            durEl.style.color = '#64748b';
+            return;
+        }
+
+        const diffMs = now - ts;
+        const diffMin = Math.floor(diffMs / 60000);
+        const h = Math.floor(diffMin / 60);
+        const m = diffMin % 60;
+        const dur = `${h}j ${m}m`;
+
+        if (lastType === 'MASUK') {
+            durEl.innerHTML = `<i class="fas fa-briefcase"></i> Sudah bekerja: <strong style="color:#10b981;">${dur}</strong>`;
+            durEl.style.color = '#64748b';
+        } else if (lastType === 'MULAI_LEMBUR') {
+            durEl.innerHTML = `<i class="fas fa-moon"></i> Sedang lembur: <strong style="color:#6366f1;">${dur}</strong>`;
+            durEl.style.color = '#64748b';
+        } else if (lastType === 'PULANG') {
+            durEl.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981;"></i> Sudah absen pulang';
+            durEl.style.color = '#64748b';
+        } else if (lastType === 'SELESAI_LEMBUR') {
+            durEl.innerHTML = '<i class="fas fa-heart" style="color:#ef4444;"></i> Lembur selesai';
+            durEl.style.color = '#64748b';
+        } else {
+            durEl.innerHTML = '<i class="far fa-clock"></i> Status: ' + lastType;
+            durEl.style.color = '#64748b';
         }
     },
 
