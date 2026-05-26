@@ -146,7 +146,7 @@ async updateApproval(rowId, status) {
                     <td style="padding:10px;"><span class="badge-${String(log.type).toLowerCase().replace(/_/g, '-')}">${log.type}</span></td>
                     <td style="padding:10px;"><small>${log.location || '-'}</small></td>
                     <td style="text-align:center; padding:10px;">
-                        ${log.image ? `<img src="${log.image}" style="width:34px; height:34px; border-radius:6px; object-fit:cover; cursor:zoom-in; border:1px solid #e2e8f0;" onclick="adminReports.showLightbox(this.src, '${(log.userName || log.userId || '').replace(/'/g,"\\'")}', '${log.timestamp || ''}')" title="Klik untuk perbesar">` : '-'}
+                        ${log.image ? `<img src="${log.image}" style="width:34px; height:34px; border-radius:6px; object-fit:cover; cursor:zoom-in; border:1px solid #e2e8f0;" onclick="adminReports.showLightbox(this.src, '${(log.userName || log.userId || '').replace(/'/g,"\\'")}', '${String(log.quote || '').replace(/'/g,"\\'").replace(/\n/g,' ')}')" title="Klik untuk perbesar">` : '-'}
                     </td>
                     <td style="padding:10px; color:#ef4444;"><small>${log.statusTelat || '-'}</small></td>
                     <td style="text-align:center; padding:10px;">${log.mulai || '-'}</td>
@@ -174,7 +174,7 @@ async updateApproval(rowId, status) {
 ,
 
     // Lightbox foto selfie absen — modal full-screen, klik backdrop / Esc untuk tutup
-    showLightbox(src, caption, timestamp) {
+    showLightbox(src, caption, quote) {
         if (!src) return;
         let modal = document.getElementById('admin-photo-lightbox');
         if (!modal) {
@@ -183,10 +183,10 @@ async updateApproval(rowId, status) {
             modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.88); display:none; align-items:center; justify-content:center; z-index:99999; padding:20px; cursor:zoom-out;';
             modal.innerHTML = `
                 <div style="position:relative; max-width:95vw; max-height:95vh; cursor:default;" onclick="event.stopPropagation()">
-                    <img id="admin-photo-lightbox-img" style="max-width:100%; max-height:80vh; object-fit:contain; border-radius:10px; box-shadow:0 25px 60px rgba(0,0,0,0.5); background:#000;">
-                    <div id="admin-photo-lightbox-caption" style="margin-top:14px; padding:12px 18px; background:rgba(255,255,255,0.96); border-radius:10px; text-align:center; font-family:'Poppins',sans-serif;">
-                        <div id="admin-photo-lightbox-name" style="font-weight:700; color:#1e293b; font-size:15px;"></div>
-                        <div id="admin-photo-lightbox-time" style="font-size:12px; color:#64748b; margin-top:3px;"></div>
+                    <img id="admin-photo-lightbox-img" style="max-width:100%; max-height:75vh; object-fit:contain; border-radius:10px; box-shadow:0 25px 60px rgba(0,0,0,0.5); background:#000;">
+                    <div id="admin-photo-lightbox-caption" style="margin-top:14px; padding:14px 20px; background:rgba(255,255,255,0.96); border-radius:10px; text-align:center; font-family:'Poppins',sans-serif;">
+                        <div id="admin-photo-lightbox-name" style="font-weight:700; color:#1e293b; font-size:16px;"></div>
+                        <div id="admin-photo-lightbox-quote" style="font-size:13px; color:#475569; margin-top:8px; font-style:italic; line-height:1.5;"></div>
                     </div>
                 </div>
                 <button type="button" id="admin-photo-lightbox-close" style="position:absolute; top:18px; right:24px; background:rgba(255,255,255,0.18); color:white; border:none; width:46px; height:46px; border-radius:50%; font-size:26px; line-height:1; cursor:pointer; backdrop-filter:blur(8px);" title="Tutup (Esc)">×</button>
@@ -200,7 +200,15 @@ async updateApproval(rowId, status) {
         }
         document.getElementById('admin-photo-lightbox-img').src = src;
         document.getElementById('admin-photo-lightbox-name').textContent = caption || '-';
-        document.getElementById('admin-photo-lightbox-time').textContent = timestamp || '';
+        const quoteEl = document.getElementById('admin-photo-lightbox-quote');
+        const cleanQuote = String(quote || '').trim();
+        if (cleanQuote) {
+            quoteEl.innerHTML = '<i class="fas fa-quote-left" style="color:#cbd5e1; margin-right:4px;"></i> ' + cleanQuote + ' <i class="fas fa-quote-right" style="color:#cbd5e1; margin-left:4px;"></i>';
+            quoteEl.style.display = 'block';
+        } else {
+            quoteEl.innerHTML = '<span style="color:#cbd5e1;">— tidak ada pesan —</span>';
+            quoteEl.style.display = 'block';
+        }
         modal.style.display = 'flex';
     },
 
