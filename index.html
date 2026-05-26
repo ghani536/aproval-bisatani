@@ -80,7 +80,7 @@
             overflow-y: auto;
         }
 
-        /* Hamburger: hidden by default, shown on small viewport */
+        /* Hamburger: hidden on wide screen, shown saat <=1024px (half-screen di laptop) */
         .mobile-menu-toggle {
             display: none;
             background: transparent;
@@ -99,9 +99,26 @@
             background: #f1f5f9;
             color: #10b981;
         }
+        .sidebar-backdrop {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 9400;
+        }
+        .sidebar-backdrop.active { display: block; }
+        @keyframes sidebarSlideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
 
-        /* Mobile sidebar slide-in via hamburger */
-        @media (max-width: 768px) {
+        /* Half-screen / tablet: hamburger aktif, sidebar di-hide jadi slide-in only */
+        @media (max-width: 1024px) {
+            .mobile-menu-toggle {
+                display: flex !important;
+            }
+            .sidebar {
+                display: none !important;
+            }
             .sidebar.mobile-open {
                 display: flex !important;
                 flex-direction: column;
@@ -114,16 +131,9 @@
                 overflow-y: auto;
                 animation: sidebarSlideIn 0.25s ease-out;
             }
-            .sidebar-backdrop {
-                display: none;
-                position: fixed; inset: 0;
-                background: rgba(0,0,0,0.45);
-                z-index: 9400;
-            }
-            .sidebar-backdrop.active { display: block; }
-            @keyframes sidebarSlideIn {
-                from { transform: translateX(-100%); }
-                to { transform: translateX(0); }
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
             }
         }
 
