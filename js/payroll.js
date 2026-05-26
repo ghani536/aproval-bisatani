@@ -71,7 +71,11 @@ const payroll = {
         let jamLemburTotal = 0;
 
         userLogs.forEach(log => {
+            // Skip row yang DITOLAK admin (hanya berlaku untuk MASUK & SELESAI_LEMBUR)
+            const isRejected = String(log.approvalStatus || '').toUpperCase() === 'REJECTED';
+
             if (log.type === 'MASUK') {
+                if (isRejected) return; // Tidak hitung sebagai hadir, telat juga skip
                 hadirCount++;
                 if (log.statusTelat && log.statusTelat !== "0" && log.statusTelat !== "-") {
                     totalMenitTelat += parseInt(log.statusTelat) || 0;
@@ -79,6 +83,7 @@ const payroll = {
             }
             // FORCE PARSE DECIMAL: Mengatasi 0.03j agar tidak hilang
             if (log.type === 'SELESAI_LEMBUR') {
+                if (isRejected) return; // Tidak hitung jam lembur
                 let jamRaw = String(log.totalHours || "0").replace(',', '.');
                 jamLemburTotal += parseFloat(jamRaw);
             }
