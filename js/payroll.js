@@ -202,12 +202,74 @@ const payroll = {
                 </td>
                 <td data-total-id="${p.id}" style="background:#f0fdf4; font-weight:700; color:#166534;">Rp ${p.totalGaji.toLocaleString('id-ID')}</td>
                 <td style="text-align:center;">
-                    <button onclick="payroll.showSlip('${p.id}')" style="background:#6366f1; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;">
-                        <i class="fas fa-file-invoice"></i> Slip
-                    </button>
+                    <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
+                        <button onclick="payroll.showSlip('${p.id}')" title="Lihat / Cetak Slip"
+                            style="background:#6366f1; color:white; border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12px;">
+                            <i class="fas fa-file-invoice"></i>
+                        </button>
+                        <button onclick="payroll.sendEmail('${p.id}')" title="Kirim slip via email"
+                            style="background:#10b981; color:white; border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12px;">
+                            <i class="fas fa-envelope"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `; }).join('');
+    },
+
+    async sendEmail(id) {
+        const data = this.calculatedData.find(d => String(d.id) === String(id));
+        if (!data) return alert("Data tidak ditemukan");
+
+        // Cari email karyawan dari employees list
+        const emp = this.employees.find(e => String(e.id) === String(id));
+        const email = emp ? String(emp.email || '').trim() : '';
+        if (!email || email.indexOf('@') < 0) {
+            return alert(`❌ Email karyawan ${data.name} tidak valid: "${email}". Tambahkan email di Data Karyawan dulu.`);
+        }
+
+        if (!confirm(`Kirim slip gaji ke ${data.name} (${email})?`)) return;
+
+        const bulanNama = document.getElementById('payroll-month').options[document.getElementById('payroll-month').selectedIndex].text;
+        const tahun = document.getElementById('payroll-year').value;
+
+        const btn = event && event.currentTarget;
+        const originalHTML = btn ? btn.innerHTML : '';
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+        try {
+            const payload = {
+                action: 'sendSlipEmail',
+                email: email,
+                name: data.name,
+                id: data.id,
+                bulan: bulanNama,
+                tahun: tahun,
+                jenis_gaji: data.jenis_gaji,
+                gapok: data.gapok,
+                hadir: data.hadir,
+                lemburJam: data.lemburJam,
+                bonusLembur: data.bonusLembur,
+                menitTelat: data.menitTelat,
+                dendaTelat: data.dendaTelat,
+                bpjs: data.bpjs,
+                tarifPerJam: data.tarifPerJam,
+                jamKerjaTotal: data.jamKerjaTotal,
+                basisGaji: data.basisGaji,
+                bonusCustom: data.bonusCustom || 0,
+                totalGaji: data.totalGaji
+            };
+            const res = await api.post(payload);
+            if (res && res.success) {
+                alert(`✅ ${res.message || 'Slip terkirim ke ' + email}`);
+            } else {
+                alert("❌ Gagal kirim: " + (res.error || "Cek koneksi"));
+            }
+        } catch (e) {
+            alert("❌ Error: " + e.message);
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
+        }
     },
 
     showSlip(id) {
