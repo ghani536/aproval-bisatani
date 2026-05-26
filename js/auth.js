@@ -27,6 +27,25 @@ const auth = {
         if (logoutBtn) {
             logoutBtn.onclick = () => this.handleLogout();
         }
+
+        // Toggle show/hide password
+        const toggleBtn = document.getElementById('toggle-password');
+        const pwdInput = document.getElementById('login-password');
+        if (toggleBtn && pwdInput) {
+            toggleBtn.onclick = (e) => {
+                e.preventDefault();
+                const isHidden = pwdInput.type === 'password';
+                pwdInput.type = isHidden ? 'text' : 'password';
+                // Swap icon eye <-> eye-slash
+                const icon = toggleBtn.querySelector('i');
+                if (icon) {
+                    icon.classList.remove(isHidden ? 'fa-eye' : 'fa-eye-slash');
+                    icon.classList.add(isHidden ? 'fa-eye-slash' : 'fa-eye');
+                }
+                toggleBtn.setAttribute('aria-label', isHidden ? 'Sembunyikan password' : 'Tampilkan password');
+            };
+            toggleBtn.setAttribute('aria-label', 'Tampilkan password');
+        }
     },
 
     async handleLogin() {
