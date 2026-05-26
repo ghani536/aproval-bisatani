@@ -70,4 +70,59 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    // Initial scan for scrollable tables + periodic recheck (cover async render)
+    setTimeout(() => enhanceAllScrollableTables(), 400);
+    setTimeout(() => enhanceAllScrollableTables(), 1500);
+    window.addEventListener('resize', () => enhanceAllScrollableTables());
 });
+
+// Tambah tombol scroll horizontal di setiap .table-responsive yang melebar
+function enhanceTableScroll(scrollEl) {
+    if (!scrollEl || !scrollEl.classList.contains('table-responsive')) return;
+    let wrap = scrollEl.parentElement;
+    // Wrap kalau belum ada
+    if (!wrap || !wrap.classList.contains('table-scroll-wrap')) {
+        const newWrap = document.createElement('div');
+        newWrap.className = 'table-scroll-wrap';
+        scrollEl.parentNode.insertBefore(newWrap, scrollEl);
+        newWrap.appendChild(scrollEl);
+        wrap = newWrap;
+    }
+    let btnL = wrap.querySelector('.h-scroll-btn-left');
+    let btnR = wrap.querySelector('.h-scroll-btn-right');
+    if (!btnL) {
+        btnL = document.createElement('button');
+        btnL.type = 'button';
+        btnL.className = 'h-scroll-btn h-scroll-btn-left';
+        btnL.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        btnL.onclick = (e) => { e.preventDefault(); scrollEl.scrollBy({ left: -280, behavior: 'smooth' }); };
+        wrap.appendChild(btnL);
+    }
+    if (!btnR) {
+        btnR = document.createElement('button');
+        btnR.type = 'button';
+        btnR.className = 'h-scroll-btn h-scroll-btn-right';
+        btnR.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        btnR.onclick = (e) => { e.preventDefault(); scrollEl.scrollBy({ left: 280, behavior: 'smooth' }); };
+        wrap.appendChild(btnR);
+    }
+    const update = () => {
+        const max = scrollEl.scrollWidth - scrollEl.clientWidth;
+        const needScroll = max > 10;
+        const canL = needScroll && scrollEl.scrollLeft > 5;
+        const canR = needScroll && scrollEl.scrollLeft < max - 5;
+        btnL.classList.toggle('visible', canL);
+        btnR.classList.toggle('visible', canR);
+    };
+    if (!scrollEl.dataset.hsBound) {
+        scrollEl.addEventListener('scroll', update);
+        scrollEl.dataset.hsBound = '1';
+    }
+    update();
+}
+
+function enhanceAllScrollableTables() {
+    document.querySelectorAll('.table-responsive').forEach(enhanceTableScroll);
+}
+window.enhanceAllScrollableTables = enhanceAllScrollableTables;
