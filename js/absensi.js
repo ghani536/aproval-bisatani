@@ -40,64 +40,61 @@ const absensi = {
     tickClock() {
         const clockEl = document.getElementById('live-clock');
         const durEl = document.getElementById('live-duration');
-        const now = new Date();
-        if (clockEl) {
-            const hh = String(now.getHours()).padStart(2,'0');
-            const mm = String(now.getMinutes()).padStart(2,'0');
-            const ss = String(now.getSeconds()).padStart(2,'0');
-            clockEl.textContent = `${hh}:${mm}:${ss}`;
-        }
-        if (!durEl) return;
+        if (!clockEl && !durEl) return;
 
-        // Tentukan timestamp action terakhir
         const last = this.statusCache;
         const todayStr = this.todayStr();
-        if (!last) {
-            durEl.innerHTML = '<i class="far fa-clock"></i> Belum absen hari ini';
-            durEl.style.color = '#94a3b8';
-            return;
-        }
-        const lastDateStr = this.normalizeDateStr(last.date || last.timestamp || last.timestampISO);
-        if (lastDateStr !== todayStr) {
-            durEl.innerHTML = '<i class="far fa-clock"></i> Belum absen hari ini';
-            durEl.style.color = '#94a3b8';
-            return;
-        }
+        const lastDateStr = last ? this.normalizeDateStr(last.date || last.timestamp || last.timestampISO) : '';
+        const isToday = lastDateStr === todayStr;
+        const lastType = isToday && last ? (last.type || last.Tipe) : null;
 
-        const tsStr = last.timestampISO || last.timestamp;
+        const tsStr = isToday && last ? (last.timestampISO || last.timestamp) : null;
         const ts = tsStr ? new Date(tsStr) : null;
-        const lastType = last.type || last.Tipe;
+        const now = new Date();
 
-        if (!ts || isNaN(ts)) {
-            // Tidak ada timestamp valid
-            durEl.innerHTML = lastType === 'PULANG'
-                ? '<i class="fas fa-check"></i> Tugas selesai hari ini'
-                : '<i class="far fa-clock"></i> Status: ' + lastType;
-            durEl.style.color = '#64748b';
-            return;
-        }
+        // Aktif counting saat MASUK atau MULAI_LEMBUR
+        const isCounting = (lastType === 'MASUK' || lastType === 'MULAI_LEMBUR') && ts && !isNaN(ts);
 
-        const diffMs = now - ts;
-        const diffMin = Math.floor(diffMs / 60000);
-        const h = Math.floor(diffMin / 60);
-        const m = diffMin % 60;
-        const dur = `${h}j ${m}m`;
-
-        if (lastType === 'MASUK') {
-            durEl.innerHTML = `<i class="fas fa-briefcase"></i> Sudah bekerja: <strong style="color:#10b981;">${dur}</strong>`;
-            durEl.style.color = '#64748b';
-        } else if (lastType === 'MULAI_LEMBUR') {
-            durEl.innerHTML = `<i class="fas fa-moon"></i> Sedang lembur: <strong style="color:#6366f1;">${dur}</strong>`;
-            durEl.style.color = '#64748b';
-        } else if (lastType === 'PULANG') {
-            durEl.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981;"></i> Sudah absen pulang';
-            durEl.style.color = '#64748b';
-        } else if (lastType === 'SELESAI_LEMBUR') {
-            durEl.innerHTML = '<i class="fas fa-heart" style="color:#ef4444;"></i> Lembur selesai';
-            durEl.style.color = '#64748b';
+        if (isCounting) {
+            const diffSec = Math.max(0, Math.floor((now - ts) / 1000));
+            const h = Math.floor(diffSec / 3600);
+            const m = Math.floor((diffSec % 3600) / 60);
+            const s = diffSec % 60;
+            const txt = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            if (clockEl) {
+                clockEl.textContent = txt;
+                clockEl.style.color = lastType === 'MASUK' ? '#10b981' : '#6366f1';
+            }
+            if (durEl) {
+                if (lastType === 'MASUK') {
+                    durEl.innerHTML = '<i class="fas fa-briefcase"></i> Sudah bekerja';
+                    durEl.style.color = '#10b981';
+                } else {
+                    durEl.innerHTML = '<i class="fas fa-moon"></i> Sedang lembur';
+                    durEl.style.color = '#6366f1';
+                }
+            }
         } else {
-            durEl.innerHTML = '<i class="far fa-clock"></i> Status: ' + lastType;
-            durEl.style.color = '#64748b';
+            // Timer tidak jalan: tampilkan dash
+            if (clockEl) {
+                clockEl.textContent = '--:--:--';
+                clockEl.style.color = '#cbd5e1';
+            }
+            if (durEl) {
+                if (!lastType) {
+                    durEl.innerHTML = '<i class="far fa-clock"></i> Belum absen masuk';
+                    durEl.style.color = '#94a3b8';
+                } else if (lastType === 'PULANG') {
+                    durEl.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981;"></i> Sudah absen pulang';
+                    durEl.style.color = '#64748b';
+                } else if (lastType === 'SELESAI_LEMBUR') {
+                    durEl.innerHTML = '<i class="fas fa-heart" style="color:#ef4444;"></i> Lembur selesai';
+                    durEl.style.color = '#64748b';
+                } else {
+                    durEl.innerHTML = '<i class="far fa-clock"></i> ' + lastType;
+                    durEl.style.color = '#94a3b8';
+                }
+            }
         }
     },
 
