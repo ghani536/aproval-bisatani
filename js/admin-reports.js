@@ -138,6 +138,10 @@ async updateApproval(rowId, status) {
             if (log.approvalStatus === 'APPROVED') colorStatus = "#10b981";
             if (log.approvalStatus === 'REJECTED') colorStatus = "#ef4444";
 
+            // Tombol edit waktu (hanya untuk type yang relevan)
+            const editableTypes = ['MASUK', 'PULANG', 'MULAI_LEMBUR', 'SELESAI_LEMBUR'];
+            const canEdit = editableTypes.includes(String(log.type));
+
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="text-align:center; padding:10px;">${index + 1}</td>
@@ -153,17 +157,21 @@ async updateApproval(rowId, status) {
                     <td style="text-align:center; padding:10px;">${log.selesai || '-'}</td>
                     <td style="text-align:center; font-weight:bold; color:#2563eb; padding:10px;">${log.totalHours || '0'} j</td>
                     <td style="text-align:center; padding:10px;">
-                        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
                             <span style="font-size:10px; font-weight:bold; color:${colorStatus}">${log.approvalStatus || 'PENDING'}</span>
-                            <div style="display:flex; gap:6px;">
-                                <button onclick="adminReports.updateApproval(${finalRowId}, 'APPROVED')" 
-                                    style="background:#10b981; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
+                            <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
+                                <button onclick="adminReports.updateApproval(${finalRowId}, 'APPROVED')"
+                                    style="background:#10b981; color:white; border:none; border-radius:4px; padding:5px 8px; cursor:pointer; font-size:11px;" title="Approve">
                                     <i class="fas fa-check"></i>
                                 </button>
-                                <button onclick="adminReports.updateApproval(${finalRowId}, 'REJECTED')" 
-                                    style="background:#ef4444; color:white; border:none; border-radius:4px; padding:6px 9px; cursor:pointer; font-size:12px;">
+                                <button onclick="adminReports.updateApproval(${finalRowId}, 'REJECTED')"
+                                    style="background:#ef4444; color:white; border:none; border-radius:4px; padding:5px 8px; cursor:pointer; font-size:11px;" title="Reject">
                                     <i class="fas fa-times"></i>
                                 </button>
+                                ${canEdit ? `<button onclick="adminReports.openEditTime(${finalRowId})"
+                                    style="background:#f59e0b; color:white; border:none; border-radius:4px; padding:5px 8px; cursor:pointer; font-size:11px;" title="Edit waktu">
+                                    <i class="fas fa-pen"></i>
+                                </button>` : ''}
                             </div>
                         </div>
                     </td>
@@ -210,6 +218,117 @@ async updateApproval(rowId, status) {
             quoteEl.style.display = 'block';
         }
         modal.style.display = 'flex';
+    },
+
+    // ==================== EDIT WAKTU ABSEN ====================
+    openEditTime(rowId) {
+        const log = this.allAttendance.find(a => String(a.rowId) === String(rowId));
+        if (!log) return alert("Data tidak ditemukan");
+
+        const type = String(log.type || '').toUpperCase();
+        const ts = String(log.timestamp || '');
+        // Extract HH:MM dari "yyyy-MM-dd HH:mm:ss"
+        const tsTimeMatch = ts.match(/(\d{1,2}):(\d{2})/);
+        const tsTime = tsTimeMatch ? (tsTimeMatch[1].padStart(2,'0') + ':' + tsTimeMatch[2]) : '';
+
+        let modal = document.getElementById('admin-edit-time-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'admin-edit-time-modal';
+            modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:99999; padding:20px;';
+            document.body.appendChild(modal);
+            // Click backdrop = close
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) adminReports.closeEditTime();
+            });
+        }
+
+        // Render isi modal sesuai type
+        let typeLabel = type.replace(/_/g, ' ');
+        let fields = '';
+        if (type === 'SELESAI_LEMBUR') {
+            fields = `
+                <div style="margin-bottom:14px;">
+                    <label style="display:block; font-size:11px; font-weight:700; color:#6366f1; margin-bottom:6px;">MULAI LEMBUR</label>
+                    <input type="time" id="edit-mulai-lembur" value="${log.mulai || ''}" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
+                </div>
+                <div style="margin-bottom:14px;">
+                    <label style="display:block; font-size:11px; font-weight:700; color:#0ea5e9; margin-bottom:6px;">SELESAI LEMBUR</label>
+                    <input type="time" id="edit-selesai-lembur" value="${log.selesai || ''}" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
+                </div>
+            `;
+        } else {
+            // MASUK / PULANG / MULAI_LEMBUR: edit jam aksi
+            const labelColor = type === 'MASUK' ? '#10b981' : (type === 'PULANG' ? '#f43f5e' : '#6366f1');
+            const recalcNote = type === 'MASUK'
+                ? '<div style="background:#f0fdf4; border-left:3px solid #10b981; padding:8px 12px; font-size:11px; color:#166534; margin-top:8px; border-radius:4px;"><i class="fas fa-info-circle"></i> Status telat akan dihitung ulang otomatis dari jam masuk standar.</div>'
+                : '';
+            fields = `
+                <div style="margin-bottom:14px;">
+                    <label style="display:block; font-size:11px; font-weight:700; color:${labelColor}; margin-bottom:6px;">JAM ${typeLabel}</label>
+                    <input type="time" id="edit-waktu-aksi" value="${tsTime}" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px;">
+                    ${recalcNote}
+                </div>
+            `;
+        }
+
+        modal.innerHTML = `
+            <div style="background:white; padding:24px; border-radius:14px; width:90%; max-width:420px; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+                <div style="margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #e2e8f0;">
+                    <h3 style="margin:0; font-size:18px; color:#1e293b;"><i class="fas fa-pen" style="color:#f59e0b;"></i> Edit Waktu Absen</h3>
+                    <div style="margin-top:6px; font-size:13px; color:#64748b;">
+                        <strong>${log.userName || log.userId}</strong> · <span class="badge-${type.toLowerCase().replace(/_/g,'-')}" style="font-size:11px;">${type}</span><br>
+                        <small>Tanggal: ${ts.substring(0, 10)}</small>
+                    </div>
+                </div>
+                ${fields}
+                <div style="display:flex; gap:10px; margin-top:8px;">
+                    <button onclick="adminReports.submitEditTime(${rowId}, '${type}')" id="edit-time-save"
+                        style="flex:1; background:#10b981; color:white; border:none; padding:11px; border-radius:8px; cursor:pointer; font-weight:700;">SIMPAN</button>
+                    <button onclick="adminReports.closeEditTime()"
+                        style="flex:1; background:#f1f5f9; color:#475569; border:none; padding:11px; border-radius:8px; cursor:pointer;">BATAL</button>
+                </div>
+            </div>
+        `;
+        modal.style.display = 'flex';
+    },
+
+    closeEditTime() {
+        const m = document.getElementById('admin-edit-time-modal');
+        if (m) m.style.display = 'none';
+    },
+
+    async submitEditTime(rowId, type) {
+        const btn = document.getElementById('edit-time-save');
+        const orig = btn ? btn.innerHTML : '';
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
+
+        const payload = { action: 'updateAttendanceTime', rowId: rowId };
+
+        if (type === 'SELESAI_LEMBUR') {
+            const m = (document.getElementById('edit-mulai-lembur') || {}).value;
+            const s = (document.getElementById('edit-selesai-lembur') || {}).value;
+            if (m) payload.mulaiLembur = m;
+            if (s) payload.selesaiLembur = s;
+        } else {
+            const w = (document.getElementById('edit-waktu-aksi') || {}).value;
+            if (w) payload.waktuAksi = w;
+        }
+
+        try {
+            const res = await api.post(payload);
+            if (res && res.success) {
+                alert("✅ " + (res.message || "Waktu absen berhasil diupdate"));
+                this.closeEditTime();
+                await this.loadData(); // refresh tabel
+            } else {
+                alert("❌ Gagal: " + (res.error || "Cek backend"));
+                if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+            }
+        } catch (e) {
+            alert("❌ Error koneksi: " + e.message);
+            if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+        }
     },
 
     closeLightbox() {
