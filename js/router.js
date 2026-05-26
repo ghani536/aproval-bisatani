@@ -63,6 +63,18 @@ const router = {
             
             // 3. JALANKAN INIT SPESIFIK HALAMAN
             this.triggerPageInit(page);
+
+            // 4. Re-scan scrollable tables setelah data load
+            setTimeout(() => {
+                if (typeof window.enhanceAllScrollableTables === 'function') {
+                    window.enhanceAllScrollableTables();
+                }
+            }, 700);
+            setTimeout(() => {
+                if (typeof window.enhanceAllScrollableTables === 'function') {
+                    window.enhanceAllScrollableTables();
+                }
+            }, 2500);
         } else {
             console.error("Router: ID halaman tidak ditemukan -> page-" + page);
         }
