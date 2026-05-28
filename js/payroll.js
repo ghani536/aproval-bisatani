@@ -188,7 +188,17 @@ const payroll = {
     renderTable(data) {
         const tbody = document.getElementById('payroll-table-body');
         if (!tbody) return;
-        tbody.innerHTML = data.map(p => {
+        // Hitung total agregat untuk footer
+        const totals = data.reduce((acc, p) => {
+            acc.bonusLembur += Number(p.bonusLembur || 0);
+            acc.dendaTelat += Number(p.dendaTelat || 0);
+            acc.bpjs += Number(p.bpjs || 0);
+            acc.bonusCustom += Number(p.bonusCustom || 0);
+            acc.totalGaji += Number(p.totalGaji || 0);
+            return acc;
+        }, { bonusLembur:0, dendaTelat:0, bpjs:0, bonusCustom:0, totalGaji:0 });
+
+        const dataRows = data.map(p => {
             const isPerJam = p.jenis_gaji === 'per_jam';
             const basisCell = isPerJam
                 ? `<small style="color:#6366f1;">${p.jamKerjaTotal.toFixed(2)}j × Rp ${p.tarifPerJam.toLocaleString('id-ID')}</small><br>Rp ${p.basisGaji.toLocaleString('id-ID')}`
@@ -229,6 +239,24 @@ const payroll = {
                 <td style="text-align:center;">${aksiCell}</td>
             </tr>
         `; }).join('');
+
+        // Footer total - all employees aggregate
+        const footerRow = `
+            <tr style="background:#0f172a; color:white;">
+                <td colspan="4" style="padding:14px 12px; font-weight:700; font-size:13px; color:white;">
+                    <i class="fas fa-coins" style="color:#fbbf24; margin-right:6px;"></i>
+                    TOTAL (${data.length} karyawan)
+                </td>
+                <td style="padding:14px; color:#86efac; font-weight:700; text-align:left;">+${totals.bonusLembur.toLocaleString('id-ID')}</td>
+                <td style="padding:14px; color:#fca5a5; font-weight:700; text-align:left;">-${totals.dendaTelat.toLocaleString('id-ID')}</td>
+                <td style="padding:14px; color:#fca5a5; font-weight:700; text-align:left;">-${totals.bpjs.toLocaleString('id-ID')}</td>
+                <td style="padding:14px; color:#fde047; font-weight:700; text-align:right;">+${totals.bonusCustom.toLocaleString('id-ID')}</td>
+                <td style="padding:14px; background:#10b981; color:white; font-weight:800; font-size:15px; text-align:right;">Rp ${totals.totalGaji.toLocaleString('id-ID')}</td>
+                <td style="background:#0f172a;"></td>
+            </tr>
+        `;
+
+        tbody.innerHTML = dataRows + footerRow;
     },
 
     // ========== AKSI GLOBAL: DOWNLOAD CSV ==========
@@ -283,8 +311,26 @@ const payroll = {
             ];
         });
 
+        // Footer aggregate
+        const totals = this.calculatedData.reduce((acc, p) => {
+            acc.bonusLembur += Number(p.bonusLembur || 0);
+            acc.dendaTelat += Number(p.dendaTelat || 0);
+            acc.bpjs += Number(p.bpjs || 0);
+            acc.bonusCustom += Number(p.bonusCustom || 0);
+            acc.totalGaji += Number(p.totalGaji || 0);
+            return acc;
+        }, { bonusLembur:0, dendaTelat:0, bpjs:0, bonusCustom:0, totalGaji:0 });
+
+        // Footer row: 19 kolom (sama dengan headers)
+        const footer = [
+            '', '', `TOTAL (${this.calculatedData.length} karyawan)`, '', '', '', '', // col 1-7
+            '', '', '', '', '',                                                       // col 8-12
+            totals.bonusLembur, '', totals.dendaTelat, totals.bpjs,                   // col 13-16
+            totals.bonusCustom, totals.totalGaji, ''                                  // col 17-19
+        ];
+
         // CSV content + UTF-8 BOM (supaya Excel buka tanpa garbled char)
-        const csv = '﻿' + [headers, ...rows]
+        const csv = '﻿' + [headers, ...rows, footer]
             .map(r => r.map(csvEscape).join(','))
             .join('\n');
 
