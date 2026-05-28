@@ -117,10 +117,10 @@ const absensi = {
         const labelEl = document.querySelector('#quote-wrapper label');
         const ta = document.getElementById('absen-quote');
         if (!labelEl || !ta) return;
+        // Label sama untuk pagi & sore: "Quote (opsional)"
+        labelEl.innerHTML = '<i class="fas fa-quote-left"></i> Quote (opsional)';
         if (lastType === 'MASUK') {
-            // Akan absen pulang -> reset textarea, label refleksi
-            labelEl.innerHTML = '<i class="fas fa-quote-left"></i> Refleksi / pesan akhir hari (opsional)';
-            ta.placeholder = 'Misal: hari ini produktif, target tercapai!';
+            ta.placeholder = 'Tulis quote favorit / mood sore kamu...';
             // Clear input (supaya tidak terbawa dari sesi pagi)
             if (ta.dataset.lastType !== lastType) {
                 ta.value = '';
@@ -128,9 +128,7 @@ const absensi = {
                 if (counter) counter.textContent = '0';
             }
         } else {
-            // Belum absen -> pesan pagi
-            labelEl.innerHTML = '<i class="fas fa-quote-left"></i> Pesan / mood hari ini (opsional)';
-            ta.placeholder = 'Misal: semangat pagi, hari ini target selesai!';
+            ta.placeholder = 'Tulis quote favorit / mood pagi kamu...';
             if (ta.dataset.lastType !== 'null') {
                 ta.value = '';
                 const counter = document.getElementById('quote-counter');
