@@ -154,6 +154,10 @@ const adminEmployees = {
                     pwd.value = "";
                     pwd.placeholder = "Min. 4 karakter (wajib diisi)";
                 }
+                const bankEl = document.getElementById('emp-bank');
+                const rekEl = document.getElementById('emp-rekening');
+                if (bankEl) bankEl.value = "";
+                if (rekEl) rekEl.value = "";
                 document.getElementById('modal-employee').style.display = 'flex';
             };
         }
@@ -189,7 +193,9 @@ const adminEmployees = {
                 dendatelat: document.getElementById('emp-denda').value,
                 jam_mulai_lembur: (document.getElementById('emp-jam-lembur') || {}).value || "",
                 jenis_gaji: jenisGajiEl ? jenisGajiEl.value : "bulanan",
-                tarif_per_jam: tarifJamEl ? (tarifJamEl.value || "0") : "0"
+                tarif_per_jam: tarifJamEl ? (tarifJamEl.value || "0") : "0",
+                nama_bank: (document.getElementById('emp-bank') || {}).value || "",
+                no_rekening: (document.getElementById('emp-rekening') || {}).value || ""
             };
             // Password: hanya kirim kalau diisi (kosong = backend pakai password lama)
             if (pwdEl && pwdEl.value.trim() !== "") {
@@ -248,6 +254,12 @@ const adminEmployees = {
             pwdEl.value = "";
             pwdEl.placeholder = emp.password ? `Saat ini: ${emp.password} (kosongkan = tetap)` : "Belum ada password";
         }
+
+        // Bank + No Rekening
+        const bankEl = document.getElementById('emp-bank');
+        const rekEl = document.getElementById('emp-rekening');
+        if (bankEl) bankEl.value = emp.nama_bank || "";
+        if (rekEl) rekEl.value = emp.no_rekening || "";
 
         document.getElementById('modal-employee').style.display = 'flex';
     },
