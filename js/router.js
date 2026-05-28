@@ -119,6 +119,12 @@ const router = {
                 case 'settings':
                     if (window.settings) settings.init();
                     break;
+                case 'cuti-izin':
+                    if (window.cutiIzin) cutiIzin.init();
+                    break;
+                case 'admin-pengajuan':
+                    if (window.adminPengajuan) adminPengajuan.init();
+                    break;
             }
         } catch (e) {
             console.error("Router: Gagal init halaman " + page, e);

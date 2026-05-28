@@ -135,8 +135,11 @@ const auth = {
                 if (adminMenu) adminMenu.classList.remove('hidden');
                 if (empMenu) empMenu.classList.add('hidden');
                 if (window.router) router.navigate('admin-dashboard');
-                // Refresh approval badge counter di sidebar
-                setTimeout(() => { if (window.adminApproval) adminApproval.refreshBadgeOnly(); }, 1000);
+                // Refresh badge counter di sidebar
+                setTimeout(() => {
+                    if (window.adminApproval) adminApproval.refreshBadgeOnly();
+                    if (window.adminPengajuan) adminPengajuan.preloadBadge();
+                }, 1000);
             } else {
                 if (adminMenu) adminMenu.classList.add('hidden');
                 if (empMenu) empMenu.classList.remove('hidden');

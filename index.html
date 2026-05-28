@@ -252,6 +252,7 @@
                         <li class="nav-item" data-page="admin-dashboard"><a href="#" class="nav-link"><i class="fas fa-chart-line"></i><span>Dashboard Admin</span></a></li>
                         <li class="nav-item" data-page="employees"><a href="#" class="nav-link"><i class="fas fa-users"></i><span>Data Karyawan</span></a></li>
                         <li class="nav-item" data-page="approval"><a href="#" class="nav-link"><i class="fas fa-clipboard-check"></i><span>Approval</span><span id="approval-badge" style="display:none; background:#ef4444; color:white; border-radius:10px; padding:2px 8px; font-size:10px; font-weight:700; margin-left:auto;">0</span></a></li>
+                        <li class="nav-item" data-page="admin-pengajuan"><a href="#" class="nav-link"><i class="fas fa-calendar-day"></i><span>Pengajuan</span><span id="pengajuan-badge" style="display:none; background:#ef4444; color:white; border-radius:10px; padding:2px 8px; font-size:10px; font-weight:700; margin-left:auto;">0</span></a></li>
                     </ul>
                 </div>
                 <div class="nav-section">
@@ -357,11 +358,66 @@
                 </div>
 
                 <div class="page" id="page-cuti-izin">
-                    <div style="padding: 20px; background: #fff; border-radius: 12px; text-align:center;">
-                        <i class="fas fa-calendar-day" style="font-size:3rem; color:#cbd5e1; margin:20px 0;"></i>
-                        <h3 style="margin:0 0 8px; color:#1e293b;">Menu Cuti & Izin</h3>
-                        <p style="color:#64748b; margin:0;">Fitur sedang dibangun 🚧</p>
-                        <p style="color:#94a3b8; font-size:13px; margin:10px 0 0;">Akan tersedia: kuota cuti tahunan, form pengajuan, upload surat keterangan, dan persetujuan admin.</p>
+                    <div style="padding:18px; background:#fff; border-radius:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fas fa-calendar-day" style="color:#10b981;"></i> Cuti & Izin</h3>
+                                <p style="color:#64748b; font-size:13px; margin:4px 0 0;">Ajukan cuti tahunan atau izin tidak masuk</p>
+                            </div>
+                            <button onclick="cutiIzin.openForm()" style="background:#10b981; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600;"><i class="fas fa-plus"></i> Pengajuan Baru</button>
+                        </div>
+
+                        <div id="ci-quota-card" style="background:linear-gradient(135deg,#10b981,#059669); color:white; padding:16px; border-radius:10px; margin-bottom:14px;">
+                            <div style="font-size:12px; opacity:0.9;">Sisa Cuti Tahun <span id="ci-quota-tahun">-</span></div>
+                            <div style="font-size:28px; font-weight:700; margin-top:2px;"><span id="ci-quota-sisa">-</span> <span style="font-size:14px; opacity:0.8;">/ <span id="ci-quota-total">7</span> hari</span></div>
+                            <div style="font-size:12px; opacity:0.85; margin-top:4px;">Terpakai: <span id="ci-quota-terpakai">0</span> hari</div>
+                        </div>
+
+                        <h4 style="margin:14px 0 8px; color:#1e293b; font-size:14px;"><i class="fas fa-list"></i> Riwayat Pengajuan</h4>
+                        <div id="ci-list"><div style="text-align:center; color:#94a3b8; padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                    </div>
+
+                    <!-- Modal Form Pengajuan -->
+                    <div id="ci-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:20px;">
+                        <div style="background:white; border-radius:12px; padding:20px; max-width:480px; width:100%; max-height:90vh; overflow-y:auto;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                                <h3 style="margin:0;"><i class="fas fa-paper-plane" style="color:#10b981;"></i> Pengajuan Baru</h3>
+                                <button onclick="cutiIzin.closeForm()" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">&times;</button>
+                            </div>
+                            <form onsubmit="cutiIzin.submit(event)">
+                                <div style="margin-bottom:12px;">
+                                    <label style="display:block; font-size:13px; color:#475569; margin-bottom:4px; font-weight:600;">Tipe</label>
+                                    <select id="ci-tipe" required style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+                                        <option value="CUTI">Cuti Tahunan (digaji)</option>
+                                        <option value="IZIN">Izin (tidak digaji)</option>
+                                    </select>
+                                </div>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                                    <div>
+                                        <label style="display:block; font-size:13px; color:#475569; margin-bottom:4px; font-weight:600;">Mulai</label>
+                                        <input type="date" id="ci-mulai" required style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+                                    </div>
+                                    <div>
+                                        <label style="display:block; font-size:13px; color:#475569; margin-bottom:4px; font-weight:600;">Selesai</label>
+                                        <input type="date" id="ci-selesai" required style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px;">
+                                    </div>
+                                </div>
+                                <div id="ci-hari-preview" style="background:#f1f5f9; padding:8px 12px; border-radius:6px; font-size:13px; color:#475569; margin-bottom:12px;">Pilih tanggal untuk lihat jumlah hari</div>
+                                <div style="margin-bottom:12px;">
+                                    <label style="display:block; font-size:13px; color:#475569; margin-bottom:4px; font-weight:600;">Alasan</label>
+                                    <textarea id="ci-alasan" required rows="3" placeholder="Tuliskan alasan pengajuan..." style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; resize:vertical; font-family:inherit;"></textarea>
+                                </div>
+                                <div style="margin-bottom:14px;">
+                                    <label style="display:block; font-size:13px; color:#475569; margin-bottom:4px; font-weight:600;">Lampiran Foto <span style="color:#94a3b8; font-weight:400;">(opsional, mis. surat dokter)</span></label>
+                                    <input type="file" id="ci-foto" accept="image/*" style="width:100%; font-size:13px;">
+                                    <div id="ci-foto-preview" style="margin-top:8px;"></div>
+                                </div>
+                                <div style="display:flex; gap:8px;">
+                                    <button type="button" onclick="cutiIzin.closeForm()" style="flex:1; background:#e2e8f0; color:#475569; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:600;">Batal</button>
+                                    <button type="submit" id="ci-submit-btn" style="flex:2; background:#10b981; color:white; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:600;"><i class="fas fa-paper-plane"></i> Ajukan</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
@@ -421,6 +477,58 @@
                         <!-- Card list -->
                         <div id="approval-cards" style="display:flex; flex-direction:column; gap:10px;">
                             <div style="text-align:center; color:#94a3b8; padding:40px 20px;"><i class="fas fa-sync fa-spin"></i> Memuat data approval...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="page" id="page-admin-pengajuan">
+                    <div style="padding:20px; background:#fff; border-radius:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fas fa-calendar-day" style="color:#10b981;"></i> Pengajuan Cuti & Izin</h3>
+                                <p style="color:#64748b; font-size:13px; margin:4px 0 0;">Approve atau reject pengajuan dari karyawan</p>
+                            </div>
+                            <button onclick="adminPengajuan.load()" style="background:#10b981; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;"><i class="fas fa-sync"></i> Refresh</button>
+                        </div>
+
+                        <div style="display:flex; gap:4px; background:#f1f5f9; padding:4px; border-radius:10px; margin-bottom:14px;">
+                            <button id="ap-tab-all" onclick="adminPengajuan.setTab('ALL')" style="flex:1; padding:10px; background:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; color:#1e293b; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                                <i class="fas fa-list"></i> Semua <span id="ap-cnt-all" style="background:#e2e8f0; color:#475569; padding:1px 8px; border-radius:8px; font-size:11px; margin-left:4px;">0</span>
+                            </button>
+                            <button id="ap-tab-cuti" onclick="adminPengajuan.setTab('CUTI')" style="flex:1; padding:10px; background:transparent; border:none; border-radius:8px; cursor:pointer; font-weight:600; color:#64748b;">
+                                <i class="fas fa-umbrella-beach"></i> Cuti <span id="ap-cnt-cuti" style="background:#dcfce7; color:#166534; padding:1px 8px; border-radius:8px; font-size:11px; margin-left:4px;">0</span>
+                            </button>
+                            <button id="ap-tab-izin" onclick="adminPengajuan.setTab('IZIN')" style="flex:1; padding:10px; background:transparent; border:none; border-radius:8px; cursor:pointer; font-weight:600; color:#64748b;">
+                                <i class="fas fa-file-medical"></i> Izin <span id="ap-cnt-izin" style="background:#dbeafe; color:#1e40af; padding:1px 8px; border-radius:8px; font-size:11px; margin-left:4px;">0</span>
+                            </button>
+                        </div>
+
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+                            <label style="font-size:13px; color:#64748b; font-weight:600;">Status:</label>
+                            <select id="ap-status-filter" onchange="adminPengajuan.render()" style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                                <option value="PENDING" selected>Pending saja</option>
+                                <option value="">Semua status</option>
+                                <option value="APPROVED">Approved</option>
+                                <option value="REJECTED">Rejected</option>
+                            </select>
+                        </div>
+
+                        <div id="ap-cards" style="display:flex; flex-direction:column; gap:10px;">
+                            <div style="text-align:center; color:#94a3b8; padding:40px 20px;"><i class="fas fa-sync fa-spin"></i> Memuat data pengajuan...</div>
+                        </div>
+                    </div>
+
+                    <!-- Modal decide -->
+                    <div id="ap-decide-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:20px;">
+                        <div style="background:white; border-radius:12px; padding:20px; max-width:440px; width:100%;">
+                            <h3 id="ap-decide-title" style="margin:0 0 14px;">Konfirmasi</h3>
+                            <div id="ap-decide-info" style="background:#f1f5f9; padding:10px; border-radius:6px; margin-bottom:12px; font-size:13px; color:#475569;"></div>
+                            <label style="display:block; font-size:13px; color:#475569; margin-bottom:4px; font-weight:600;">Catatan untuk karyawan (opsional)</label>
+                            <textarea id="ap-decide-catatan" rows="3" placeholder="Mis. alasan reject atau pesan tambahan..." style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; resize:vertical; font-family:inherit; margin-bottom:14px;"></textarea>
+                            <div style="display:flex; gap:8px;">
+                                <button onclick="adminPengajuan.closeDecide()" style="flex:1; background:#e2e8f0; color:#475569; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;">Batal</button>
+                                <button id="ap-decide-confirm" onclick="adminPengajuan.confirmDecide()" style="flex:2; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;">Konfirmasi</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -724,6 +832,8 @@
     <script src="js/admin-approval.js"></script>
     <script src="js/admin-reports.js"></script>
     <script src="js/admin-dashboard.js"></script>
+    <script src="js/cuti-izin.js"></script>
+    <script src="js/admin-pengajuan.js"></script>
 
     <script>
         document.querySelectorAll('.nav-item-mobile[data-page]').forEach(item => {
