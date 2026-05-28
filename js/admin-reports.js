@@ -144,7 +144,11 @@ async updateApproval(rowId, status) {
                     <td style="padding:10px;"><span class="badge-${String(log.type).toLowerCase().replace(/_/g, '-')}">${log.type}</span></td>
                     <td style="padding:10px;"><small>${log.location || '-'}</small></td>
                     <td style="text-align:center; padding:10px;">
-                        ${log.hasImage ? `<button onclick="adminReports.openPhotoLazy(${finalRowId}, '${(log.userName || log.userId || '').replace(/'/g,"\\'")}', '${String(log.quote || '').replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:34px; height:34px; border-radius:6px; cursor:zoom-in; border:1px solid #e2e8f0; background:#f0fdf4; color:#10b981;" title="Klik untuk lihat foto"><i class="fas fa-image"></i></button>` : '<span style="color:#cbd5e1;">—</span>'}
+                        ${log.thumbnail
+                            ? `<img src="${log.thumbnail}" onclick="adminReports.openPhotoLazy(${finalRowId}, '${(log.userName || log.userId || '').replace(/'/g,"\\'")}', '${String(log.quote || '').replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:42px; height:32px; object-fit:cover; border-radius:6px; cursor:zoom-in; border:1px solid #e2e8f0;" title="Klik untuk perbesar">`
+                            : log.hasImage
+                                ? `<button onclick="adminReports.openPhotoLazy(${finalRowId}, '${(log.userName || log.userId || '').replace(/'/g,"\\'")}', '${String(log.quote || '').replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:42px; height:32px; border-radius:6px; cursor:zoom-in; border:1px solid #e2e8f0; background:#f0fdf4; color:#10b981;" title="Foto lama (klik lihat full)"><i class="fas fa-image"></i></button>`
+                                : '<span style="color:#cbd5e1;">—</span>'}
                     </td>
                     <td style="padding:10px; color:#ef4444;"><small>${log.statusTelat || '-'}</small></td>
                     <td style="text-align:center; padding:10px;">${log.mulai || '-'}</td>
