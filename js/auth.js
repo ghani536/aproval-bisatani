@@ -121,8 +121,17 @@ const auth = {
             // Manajemen Menu Admin vs Karyawan
             const adminMenu = document.getElementById('admin-menu-nav');
             const empMenu = document.getElementById('employee-menu');
+            const isAdmin = this.user.role === 'admin';
 
-            if (this.user.role === 'admin') {
+            // Toggle class di body untuk styling navigation karyawan vs admin
+            document.body.classList.toggle('is-employee', !isAdmin);
+            document.body.classList.toggle('is-admin', isAdmin);
+
+            // Toggle nav items berdasarkan role (di sidebar + bottom nav)
+            document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
+            document.querySelectorAll('.employee-only').forEach(el => el.classList.toggle('hidden', isAdmin));
+
+            if (isAdmin) {
                 if (adminMenu) adminMenu.classList.remove('hidden');
                 if (empMenu) empMenu.classList.add('hidden');
                 if (window.router) router.navigate('admin-dashboard');
