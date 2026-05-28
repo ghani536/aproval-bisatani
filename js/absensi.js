@@ -113,6 +113,33 @@ const absensi = {
         if (w) w.style.display = show ? 'block' : 'none';
     },
 
+    updateQuoteLabel(lastType) {
+        const labelEl = document.querySelector('#quote-wrapper label');
+        const ta = document.getElementById('absen-quote');
+        if (!labelEl || !ta) return;
+        if (lastType === 'MASUK') {
+            // Akan absen pulang -> reset textarea, label refleksi
+            labelEl.innerHTML = '<i class="fas fa-quote-left"></i> Refleksi / pesan akhir hari (opsional)';
+            ta.placeholder = 'Misal: hari ini produktif, target tercapai!';
+            // Clear input (supaya tidak terbawa dari sesi pagi)
+            if (ta.dataset.lastType !== lastType) {
+                ta.value = '';
+                const counter = document.getElementById('quote-counter');
+                if (counter) counter.textContent = '0';
+            }
+        } else {
+            // Belum absen -> pesan pagi
+            labelEl.innerHTML = '<i class="fas fa-quote-left"></i> Pesan / mood hari ini (opsional)';
+            ta.placeholder = 'Misal: semangat pagi, hari ini target selesai!';
+            if (ta.dataset.lastType !== 'null') {
+                ta.value = '';
+                const counter = document.getElementById('quote-counter');
+                if (counter) counter.textContent = '0';
+            }
+        }
+        ta.dataset.lastType = lastType || 'null';
+    },
+
     loadSettingsFromLocalCache() {
         try {
             const raw = localStorage.getItem(this.SETTINGS_CACHE_KEY);
@@ -324,8 +351,12 @@ const absensi = {
         console.log("Status Terakhir:", lastType);
         console.log("Jam Patokan Lembur:", jamMinLembur, "(sumber:", sumberJam + ")");
 
-        // Quote wrapper hanya muncul saat user akan absen MASUK
-        this.setQuoteWrapperVisible(!lastType);
+        // Quote wrapper muncul saat user akan absen MASUK ATAU saat user sudah MASUK (siap absen PULANG)
+        // Sembunyikan saat sudah PULANG / lembur (sudah lewat momen tulis quote)
+        const showQuote = !lastType || lastType === 'MASUK';
+        this.setQuoteWrapperVisible(showQuote);
+        // Update label sesuai konteks
+        this.updateQuoteLabel(lastType);
 
         let html = '';
 
@@ -389,8 +420,8 @@ const absensi = {
                 location: this.locationName,
                 image: image
             };
-            // Quote hanya ikut dikirim saat absen masuk
-            if (type === 'MASUK') {
+            // Quote ikut dikirim saat absen MASUK atau PULANG
+            if (type === 'MASUK' || type === 'PULANG') {
                 const ta = document.getElementById('absen-quote');
                 payload.quote = ta ? ta.value.trim().substring(0, 200) : "";
             }
