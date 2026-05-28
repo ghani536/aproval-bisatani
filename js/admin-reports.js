@@ -144,7 +144,7 @@ async updateApproval(rowId, status) {
                     <td style="padding:10px;"><span class="badge-${String(log.type).toLowerCase().replace(/_/g, '-')}">${log.type}</span></td>
                     <td style="padding:10px;"><small>${log.location || '-'}</small></td>
                     <td style="text-align:center; padding:10px;">
-                        ${log.image ? `<img src="${log.image}" style="width:34px; height:34px; border-radius:6px; object-fit:cover; cursor:zoom-in; border:1px solid #e2e8f0;" onclick="adminReports.showLightbox(this.src, '${(log.userName || log.userId || '').replace(/'/g,"\\'")}', '${String(log.quote || '').replace(/'/g,"\\'").replace(/\n/g,' ')}')" title="Klik untuk perbesar">` : '-'}
+                        ${log.hasImage ? `<button onclick="adminReports.openPhotoLazy(${finalRowId}, '${(log.userName || log.userId || '').replace(/'/g,"\\'")}', '${String(log.quote || '').replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:34px; height:34px; border-radius:6px; cursor:zoom-in; border:1px solid #e2e8f0; background:#f0fdf4; color:#10b981;" title="Klik untuk lihat foto"><i class="fas fa-image"></i></button>` : '<span style="color:#cbd5e1;">—</span>'}
                     </td>
                     <td style="padding:10px; color:#ef4444;"><small>${log.statusTelat || '-'}</small></td>
                     <td style="text-align:center; padding:10px;">${log.mulai || '-'}</td>
@@ -161,6 +161,25 @@ async updateApproval(rowId, status) {
         }).join('');
     }
 ,
+
+    // Lazy load foto by rowId, lalu tampil di lightbox
+    async openPhotoLazy(rowId, caption, quote) {
+        // Open lightbox immediately dengan loading state
+        this.showLightbox('LOADING', caption, quote);
+        try {
+            const res = await api.post({ action: 'getAttendanceImage', rowId: rowId });
+            if (res && res.success && res.image) {
+                const imgEl = document.getElementById('admin-photo-lightbox-img');
+                if (imgEl) imgEl.src = res.image;
+            } else {
+                const imgEl = document.getElementById('admin-photo-lightbox-img');
+                if (imgEl) imgEl.alt = 'Foto tidak tersedia';
+                alert('Gagal load foto: ' + (res.error || 'cek koneksi'));
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    },
 
     // Lightbox foto selfie absen — modal full-screen, klik backdrop / Esc untuk tutup
     showLightbox(src, caption, quote) {
@@ -187,7 +206,16 @@ async updateApproval(rowId, status) {
             });
             document.body.appendChild(modal);
         }
-        document.getElementById('admin-photo-lightbox-img').src = src;
+        const imgEl = document.getElementById('admin-photo-lightbox-img');
+        if (src === 'LOADING') {
+            // Tampilkan placeholder spinner
+            imgEl.removeAttribute('src');
+            imgEl.alt = 'Memuat foto...';
+            imgEl.style.background = '#1e293b';
+        } else {
+            imgEl.src = src;
+            imgEl.style.background = '#000';
+        }
         document.getElementById('admin-photo-lightbox-name').textContent = caption || '-';
         const quoteEl = document.getElementById('admin-photo-lightbox-quote');
         const cleanQuote = String(quote || '').trim();
