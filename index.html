@@ -38,6 +38,7 @@
         .nav-item-mobile {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             color: #94a3b8; text-decoration: none; font-size: 10px; font-weight: 500; cursor: pointer; transition: 0.2s;
+            padding: 4px 2px;
         }
 
         .nav-item-mobile i { font-size: 18px; margin-bottom: 4px; }
@@ -47,6 +48,17 @@
             .mobile-bottom-nav { display: grid; }
             .main-content { padding-bottom: 70px !important; }
             .sidebar { display: none; }
+        }
+
+        /* Karyawan mode: HANYA bottom-nav (no sidebar), apa pun ukuran layar */
+        body.is-employee .sidebar { display: none !important; }
+        body.is-employee .sidebar-backdrop { display: none !important; }
+        body.is-employee .mobile-menu-toggle { display: none !important; }
+        body.is-employee .mobile-bottom-nav { display: grid !important; }
+        body.is-employee .main-content {
+            margin-left: 0 !important;
+            width: 100% !important;
+            padding-bottom: 80px !important;
         }
 
         @media print {
@@ -319,6 +331,15 @@
                     </div>
                 </div>
 
+                <div class="page" id="page-cuti-izin">
+                    <div style="padding: 20px; background: #fff; border-radius: 12px; text-align:center;">
+                        <i class="fas fa-calendar-day" style="font-size:3rem; color:#cbd5e1; margin:20px 0;"></i>
+                        <h3 style="margin:0 0 8px; color:#1e293b;">Menu Cuti & Izin</h3>
+                        <p style="color:#64748b; margin:0;">Fitur sedang dibangun 🚧</p>
+                        <p style="color:#94a3b8; font-size:13px; margin:10px 0 0;">Akan tersedia: kuota cuti tahunan, form pengajuan, upload surat keterangan, dan persetujuan admin.</p>
+                    </div>
+                </div>
+
                 <div class="page" id="page-employees">
                     <div class="employees-container" style="padding: 20px; background: #fff; border-radius: 12px;">
                         <div class="employees-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -468,9 +489,11 @@
             </div>
         </main>
 
-        <nav class="mobile-bottom-nav no-print">
-            <div class="nav-item-mobile active" data-page="dashboard"><i class="fas fa-home"></i><span>Home</span></div>
-            <div class="nav-item-mobile" data-page="absensi"><i class="fas fa-clock"></i><span>Absen</span></div>
+        <nav class="mobile-bottom-nav no-print" id="bottom-nav">
+            <div class="nav-item-mobile active employee-only" data-page="dashboard"><i class="fas fa-home"></i><span>Home</span></div>
+            <div class="nav-item-mobile employee-only" data-page="absensi"><i class="fas fa-clock"></i><span>Absen</span></div>
+            <div class="nav-item-mobile employee-only" data-page="quote-saya"><i class="fas fa-quote-left"></i><span>Quote</span></div>
+            <div class="nav-item-mobile employee-only" data-page="cuti-izin"><i class="fas fa-calendar-day"></i><span>Cuti/Izin</span></div>
             <div class="nav-item-mobile admin-only hidden" data-page="admin-dashboard"><i class="fas fa-chart-line"></i><span>Admin</span></div>
             <div class="nav-item-mobile admin-only hidden" data-page="settings"><i class="fas fa-cog"></i><span>Set</span></div>
             <div class="nav-item-mobile" onclick="auth.handleLogout()"><i class="fas fa-sign-out-alt"></i><span>Out</span></div>
