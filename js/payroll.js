@@ -245,7 +245,7 @@ const payroll = {
         };
 
         const headers = [
-            'No', 'ID', 'Nama', 'Email', 'Jenis Gaji',
+            'No', 'ID', 'Nama', 'Email', 'Nama Bank', 'No Rekening', 'Jenis Gaji',
             'Gaji Pokok / Bulan', 'Tarif Per Jam', 'Jam Kerja Total',
             'Hadir (hari)', 'Lembur (jam)', 'Bonus Lembur',
             'Menit Telat', 'Denda Telat', 'BPJS',
@@ -254,6 +254,10 @@ const payroll = {
         const rows = this.calculatedData.map((p, i) => {
             const emp = this.employees.find(e => String(e.id) === String(p.id));
             const email = emp ? (emp.email || '') : '';
+            const namaBank = emp ? (emp.nama_bank || '') : '';
+            // Prefix no rekening dengan ' supaya tidak di-convert ke scientific notation di Excel
+            const noRekRaw = emp ? String(emp.no_rekening || '') : '';
+            const noRek = noRekRaw ? `'${noRekRaw}` : '';
             const sent = this.sentMap[String(p.id)];
             const statusKirim = sent ? `TERKIRIM ${sent.timestampDisplay}` : 'BELUM';
             return [
@@ -261,6 +265,8 @@ const payroll = {
                 p.id,
                 p.name,
                 email,
+                namaBank,
+                noRek,
                 p.jenis_gaji === 'per_jam' ? 'PER JAM' : 'BULANAN',
                 p.jenis_gaji === 'per_jam' ? 0 : p.gapok,
                 p.jenis_gaji === 'per_jam' ? p.tarifPerJam : 0,
