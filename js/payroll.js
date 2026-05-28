@@ -277,7 +277,7 @@ const payroll = {
             'Gaji Pokok / Bulan', 'Tarif Per Jam', 'Jam Kerja Total',
             'Hadir (hari)', 'Lembur (jam)', 'Bonus Lembur',
             'Menit Telat', 'Denda Telat', 'BPJS',
-            'Bonus Custom', 'TOTAL GAJI', 'Status Kirim Email'
+            'Bonus', 'TOTAL GAJI', 'Status Kirim Email'
         ];
         const rows = this.calculatedData.map((p, i) => {
             const emp = this.employees.find(e => String(e.id) === String(p.id));
