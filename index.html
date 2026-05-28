@@ -258,6 +258,7 @@
                     <ul class="nav-list">
                         <li class="nav-item" data-page="attendance-reports"><a href="#" class="nav-link"><i class="fas fa-file-invoice"></i><span>Rekap Absensi</span></a></li>
                         <li class="nav-item" data-page="payroll-reports"><a href="#" class="nav-link"><i class="fas fa-wallet"></i><span>Payroll</span></a></li>
+                        <li class="nav-item" data-page="admin-quote"><a href="#" class="nav-link"><i class="fas fa-trophy"></i><span>Voting Quote</span></a></li>
                         <li class="nav-item" data-page="settings"><a href="#" class="nav-link"><i class="fas fa-cog"></i><span>Settings</span></a></li>
                     </ul>
                 </div>
@@ -337,6 +338,40 @@
                         <h3 style="margin:0 0 8px; color:#1e293b;">Menu Cuti & Izin</h3>
                         <p style="color:#64748b; margin:0;">Fitur sedang dibangun 🚧</p>
                         <p style="color:#94a3b8; font-size:13px; margin:10px 0 0;">Akan tersedia: kuota cuti tahunan, form pengajuan, upload surat keterangan, dan persetujuan admin.</p>
+                    </div>
+                </div>
+
+                <div class="page" id="page-admin-quote">
+                    <div style="padding:20px; background:#fff; border-radius:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fas fa-trophy" style="color:#f59e0b;"></i> Kelola Voting Quote</h3>
+                                <p style="color:#64748b; font-size:13px; margin:6px 0 0;">Pilih 3 nominee per kategori dari semua quote karyawan. Karyawan akan vote di tab mereka.</p>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <select id="adminq-month" style="padding:8px; border:1px solid #cbd5e1; border-radius:6px;">
+                                    <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                                    <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                                    <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                                    <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+                                </select>
+                                <input type="number" id="adminq-year" value="2026" style="padding:8px; border:1px solid #cbd5e1; border-radius:6px; width:80px;">
+                                <button onclick="adminQuote.load()" style="background:#f59e0b; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;"><i class="fas fa-sync"></i> Muat</button>
+                            </div>
+                        </div>
+                        <div style="background:#fef3c7; border-left:4px solid #f59e0b; padding:10px 14px; border-radius:6px; margin-bottom:16px;">
+                            <strong style="color:#854d0e; font-size:13px;">Periode:</strong>
+                            <span id="adminq-period" style="color:#475569; font-size:13px;">—</span>
+                        </div>
+
+                        <h4 style="margin:20px 0 12px; color:#1e293b;"><i class="fas fa-list-ol"></i> Nominee per Kategori (max 3 per kategori)</h4>
+                        <div id="adminq-categories" style="display:flex; flex-direction:column; gap:14px; margin-bottom:30px;">
+                            <div style="text-align:center; color:#94a3b8; padding:20px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div>
+                        </div>
+
+                        <h4 style="margin:30px 0 12px; color:#1e293b; border-top:2px dashed #e2e8f0; padding-top:20px;"><i class="fas fa-comments"></i> Semua Quote Bulan Ini</h4>
+                        <p style="color:#64748b; font-size:13px; margin:0 0 12px;">Klik tombol "Jadikan Nominee" pada quote untuk tag ke kategori.</p>
+                        <div id="adminq-all-quotes" style="display:flex; flex-direction:column; gap:8px;"></div>
                     </div>
                 </div>
 
@@ -599,6 +634,7 @@
     <script src="js/settings.js"></script>
     <script src="js/admin-employees.js"></script>
     <script src="js/quote-saya.js"></script>
+    <script src="js/admin-quote.js"></script>
     <script src="js/admin-reports.js"></script>
     <script src="js/admin-dashboard.js"></script>
 
