@@ -480,7 +480,7 @@ const absensi = {
         }
 
         this.setStatus("📷 Mengambil foto...");
-        const image = this.captureImage();
+        const img = this.captureImage();
 
         this.setStatus("📤 Mengirim data ke server...");
 
@@ -491,7 +491,8 @@ const absensi = {
                 userName: auth.user.name,
                 type: type,
                 location: this.locationName,
-                image: image
+                image: img.full,
+                thumbnail: img.thumb
             };
             // Quote ikut dikirim saat absen MASUK atau PULANG
             if (type === 'MASUK' || type === 'PULANG') {
@@ -520,12 +521,18 @@ const absensi = {
 
     captureImage() {
         const video = document.getElementById('webcam-preview');
-        if (!video) return "";
-        const canvas = document.createElement('canvas');
-        canvas.width = 240; canvas.height = 180;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, 240, 180);
-        return canvas.toDataURL('image/jpeg', 0.3);
+        if (!video) return { full: "", thumb: "" };
+        // Full size untuk lightbox & verifikasi detail
+        const cFull = document.createElement('canvas');
+        cFull.width = 240; cFull.height = 180;
+        cFull.getContext('2d').drawImage(video, 0, 0, 240, 180);
+        const full = cFull.toDataURL('image/jpeg', 0.4);
+        // Thumbnail kecil untuk preview di list admin (~2KB)
+        const cThumb = document.createElement('canvas');
+        cThumb.width = 64; cThumb.height = 48;
+        cThumb.getContext('2d').drawImage(video, 0, 0, 64, 48);
+        const thumb = cThumb.toDataURL('image/jpeg', 0.4);
+        return { full: full, thumb: thumb };
     }
 };
 window.absensi = absensi;
