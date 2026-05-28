@@ -131,20 +131,10 @@ async updateApproval(rowId, status) {
         filtered.sort((a, b) => Number(b.rowId) - Number(a.rowId));
 
         tbody.innerHTML = filtered.map((log, index) => {
-            // Pastikan rowId ditarik dari objek log yang benar
             const finalRowId = log.rowId;
-
-            let colorStatus = "#94a3b8";
-            if (log.approvalStatus === 'APPROVED') colorStatus = "#10b981";
-            if (log.approvalStatus === 'REJECTED') colorStatus = "#ef4444";
-
             // Tombol edit waktu (hanya untuk type yang relevan)
             const editableTypes = ['MASUK', 'PULANG', 'MULAI_LEMBUR', 'SELESAI_LEMBUR'];
             const canEdit = editableTypes.includes(String(log.type));
-
-            // Approval di-handle di menu Approval terpisah, di sini cuma display status
-            const approvableTypes = ['MASUK', 'SELESAI_LEMBUR'];
-            const isApprovable = approvableTypes.includes(String(log.type));
 
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -161,16 +151,10 @@ async updateApproval(rowId, status) {
                     <td style="text-align:center; padding:10px;">${log.selesai || '-'}</td>
                     <td style="text-align:center; font-weight:bold; color:#2563eb; padding:10px;">${log.totalHours || '0'} j</td>
                     <td style="text-align:center; padding:10px;">
-                        <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-                            ${isApprovable
-                                ? `<span style="font-size:10px; font-weight:bold; color:${colorStatus}">${log.approvalStatus || 'PENDING'}</span>`
-                                : `<span style="font-size:10px; color:#cbd5e1; font-style:italic;">—</span>`
-                            }
-                            ${canEdit ? `<button onclick="adminReports.openEditTime(${finalRowId})"
-                                style="background:#f59e0b; color:white; border:none; border-radius:4px; padding:5px 10px; cursor:pointer; font-size:11px;" title="Edit waktu absen">
-                                <i class="fas fa-pen"></i> Edit
-                            </button>` : ''}
-                        </div>
+                        ${canEdit ? `<button onclick="adminReports.openEditTime(${finalRowId})"
+                            style="background:#f59e0b; color:white; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; font-size:12px; font-weight:600;" title="Edit waktu absen">
+                            <i class="fas fa-pen"></i> Edit
+                        </button>` : '<span style="color:#cbd5e1;">—</span>'}
                     </td>
                 </tr>
             `;
