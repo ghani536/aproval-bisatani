@@ -829,13 +829,16 @@
 
     <!-- Modal Detail Karyawan -->
     <div id="modal-emp-detail" class="modal-custom" style="display:none;">
-        <div class="modal-content" style="max-width:720px; max-height:90vh; overflow-y:auto;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div class="modal-content" style="background:white; padding:24px; border-radius:14px; width:92%; max-width:720px; max-height:90vh; overflow-y:auto; box-shadow:0 10px 30px rgba(0,0,0,0.25);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; position:sticky; top:-24px; background:white; padding:8px 0 8px; margin-top:-8px; z-index:2; border-bottom:1px solid #f1f5f9;">
                 <h3 style="margin:0;"><i class="fas fa-user-tie" style="color:#10b981;"></i> Detail Karyawan</h3>
-                <button onclick="document.getElementById('modal-emp-detail').style.display='none'" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">&times;</button>
+                <button onclick="document.getElementById('modal-emp-detail').style.display='none'" title="Tutup" style="background:#f1f5f9; border:none; width:34px; height:34px; border-radius:8px; font-size:18px; cursor:pointer; color:#475569; display:flex; align-items:center; justify-content:center;"><i class="fas fa-times"></i></button>
             </div>
             <div id="emp-detail-body">
                 <div style="text-align:center; color:#94a3b8; padding:40px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div>
+            </div>
+            <div style="margin-top:18px; padding-top:14px; border-top:1px solid #f1f5f9; text-align:right;">
+                <button onclick="document.getElementById('modal-emp-detail').style.display='none'" style="background:#10b981; color:white; border:none; padding:10px 22px; border-radius:8px; cursor:pointer; font-weight:600;"><i class="fas fa-arrow-left"></i> Kembali</button>
             </div>
         </div>
     </div>
