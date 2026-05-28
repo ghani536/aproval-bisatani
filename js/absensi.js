@@ -203,28 +203,97 @@ const absensi = {
         } catch (err) { console.error("Kamera error:", err); }
     },
 
-    getLocation() {
+    _gpsWatchId: null,
+    _bestAccuracy: Infinity,
+
+    setLocStatus(html, color) {
         const locText = document.getElementById('location-text');
-        if (!locText || !navigator.geolocation) return;
-        const options = { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 };
-        const success = async (pos) => {
-            this.location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (locText) {
+            locText.innerHTML = html;
+            locText.style.color = color || '#10b981';
+        }
+    },
+
+    getLocation() {
+        if (!navigator.geolocation) {
+            this.setLocStatus('<i class="fas fa-times-circle"></i> Browser tidak support GPS', '#ef4444');
+            return;
+        }
+        // Reset state
+        this._bestAccuracy = Infinity;
+        this.setLocStatus('<i class="fas fa-spinner fa-spin"></i> Mencari lokasi...', '#f59e0b');
+
+        // 1) Quick getCurrentPosition (HIGH accuracy) — biar segera muncul perkiraan
+        const opts = { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 };
+        navigator.geolocation.getCurrentPosition(
+            (pos) => this._handlePosition(pos),
+            (err) => this._handleGpsError(err),
+            opts
+        );
+
+        // 2) Watch position — terus update saat akurasi membaik / user pindah
+        if (this._gpsWatchId !== null) {
+            try { navigator.geolocation.clearWatch(this._gpsWatchId); } catch (e) {}
+        }
+        try {
+            this._gpsWatchId = navigator.geolocation.watchPosition(
+                (pos) => this._handlePosition(pos),
+                () => { /* silent error - error sudah handled di getCurrentPosition */ },
+                { enableHighAccuracy: true, timeout: 30000, maximumAge: 10000 }
+            );
+        } catch (e) {}
+    },
+
+    async _handlePosition(pos) {
+        const acc = pos.coords.accuracy || 9999;
+        // Skip kalau akurasi lebih buruk dari yang sudah ada
+        if (acc >= this._bestAccuracy && this.location) return;
+        this._bestAccuracy = acc;
+        this.location = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: acc };
+
+        // Status: tampilkan dengan akurasi
+        const accLabel = acc < 50 ? `±${Math.round(acc)}m` : `±${Math.round(acc)}m (sedang menajamkan...)`;
+        const accColor = acc < 50 ? '#10b981' : (acc < 200 ? '#f59e0b' : '#ef4444');
+        this.setLocStatus(`<i class="fas fa-map-marker-alt"></i> <span id="loc-name">${this.locationName || 'Memuat alamat...'}</span> <small style="color:${accColor}; margin-left:6px;">${accLabel}</small>`, '#10b981');
+
+        // Update nama lokasi (reverse geocoding) hanya 1x atau saat akurasi membaik signifikan
+        if (!this.locationName || this.locationName === 'Mencari lokasi...' || this._lastGeocodeAcc > acc * 2) {
             await this.updateLocationName(this.location.lat, this.location.lng);
-            locText.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${this.locationName}`;
-        };
-        const error = (err) => {
-            navigator.geolocation.getCurrentPosition(success, () => {
-                locText.innerHTML = '<i class="fas fa-times-circle"></i> GPS Off';
-            }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
-        };
-        navigator.geolocation.getCurrentPosition(success, error, options);
+            const nameEl = document.getElementById('loc-name');
+            if (nameEl) nameEl.textContent = this.locationName || 'Lokasi terdeteksi';
+            this._lastGeocodeAcc = acc;
+        }
+    },
+
+    _handleGpsError(err) {
+        let msg = 'GPS error';
+        let hint = '';
+        switch (err && err.code) {
+            case 1: // PERMISSION_DENIED
+                msg = 'Izin lokasi ditolak';
+                hint = 'Aktifkan di setting browser';
+                break;
+            case 2: // POSITION_UNAVAILABLE
+                msg = 'Lokasi tidak terdeteksi';
+                hint = 'Coba ke area terbuka';
+                break;
+            case 3: // TIMEOUT
+                msg = 'GPS lambat / timeout';
+                hint = 'Klik refresh di samping';
+                break;
+        }
+        this.setLocStatus(
+            `<i class="fas fa-times-circle"></i> ${msg} <small style="color:#94a3b8;">· ${hint}</small> ` +
+            `<button onclick="absensi.getLocation()" style="background:#10b981; color:white; border:none; padding:3px 8px; border-radius:6px; cursor:pointer; font-size:11px; margin-left:6px;"><i class="fas fa-sync"></i> Coba lagi</button>`,
+            '#ef4444'
+        );
     },
 
     async updateLocationName(lat, lng) {
         try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
             const data = await res.json();
-            this.locationName = data.display_name || "Lokasi Terdeteksi";
+            this.locationName = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
         } catch (e) { this.locationName = `${lat.toFixed(4)}, ${lng.toFixed(4)}`; }
     },
 
@@ -400,8 +469,14 @@ const absensi = {
 
     async submit(type) {
         if (!this.location) {
-            alert("⚠️ GPS belum siap. Tunggu sebentar atau aktifkan lokasi.");
+            alert("⚠️ GPS belum siap.\n\nSebab umum:\n- Browser belum dapat izin lokasi\n- Sinyal lemah (coba ke area terbuka)\n- Lokasi mati di pengaturan HP\n\nKlik 'Coba lagi' di samping lokasi, lalu tunggu sampai akurasi muncul.");
+            // Retry GPS otomatis
+            this.getLocation();
             return;
+        }
+        // Warning kalau akurasi sangat buruk (>500m) — biarkan tetap submit tapi konfirmasi
+        if (this.location.accuracy && this.location.accuracy > 500) {
+            if (!confirm(`⚠️ Akurasi GPS rendah (±${Math.round(this.location.accuracy)}m).\n\nLanjut absen pakai lokasi ini?`)) return;
         }
 
         this.setStatus("📷 Mengambil foto...");
