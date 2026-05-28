@@ -76,13 +76,18 @@ const quoteSaya = {
             list.innerHTML = quotes.map((q, i) => {
                 // First quote = highlight (terbaru)
                 const isLatest = i === 0;
-                const borderColor = isLatest ? '#6366f1' : '#e2e8f0';
-                const badge = isLatest ? '<span style="background:#6366f1; color:white; font-size:10px; padding:2px 8px; border-radius:10px; margin-left:8px;">TERBARU</span>' : '';
+                const isPagi = (q.type === 'MASUK');
+                const sesi = isPagi
+                    ? { label: 'PAGI', icon: 'fa-sun', color: '#f59e0b', bg: '#fef3c7' }
+                    : { label: 'SORE', icon: 'fa-moon', color: '#6366f1', bg: '#e0e7ff' };
+                const borderColor = isLatest ? '#10b981' : '#e2e8f0';
+                const latestBadge = isLatest ? '<span style="background:#10b981; color:white; font-size:10px; padding:2px 8px; border-radius:10px; margin-left:6px;">TERBARU</span>' : '';
+                const sesiBadge = `<span style="background:${sesi.bg}; color:${sesi.color}; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:700;"><i class="fas ${sesi.icon}"></i> ${sesi.label}</span>`;
                 return `
                     <div style="border:1px solid ${borderColor}; border-left:4px solid ${borderColor}; background:#fff; border-radius:10px; padding:14px 16px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
                             <small style="color:#64748b; font-weight:600;"><i class="far fa-calendar"></i> ${q.dateLabel} · ${q.timeLabel}</small>
-                            ${badge}
+                            <div>${sesiBadge}${latestBadge}</div>
                         </div>
                         <p style="margin:0; color:#1e293b; font-style:italic; line-height:1.5; font-size:14px;">
                             <i class="fas fa-quote-left" style="color:#cbd5e1; margin-right:6px;"></i>${q.quote}<i class="fas fa-quote-right" style="color:#cbd5e1; margin-left:6px;"></i>
