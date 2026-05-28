@@ -97,6 +97,9 @@ const router = {
                         absensi.init(); // Memanggil versi Turbo yang baru kita buat
                     }
                     break;
+                case 'quote-saya':
+                    if (window.quoteSaya) quoteSaya.init();
+                    break;
                 case 'employees':
                     if (window.adminEmployees) adminEmployees.init();
                     break;
