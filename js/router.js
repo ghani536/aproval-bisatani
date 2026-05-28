@@ -98,7 +98,8 @@ const router = {
                     }
                     break;
                 case 'quote-saya':
-                    if (window.quoteSaya) quoteSaya.init();
+                    if (window.quotePage) quotePage.init();
+                    else if (window.quoteSaya) quoteSaya.init();
                     break;
                 case 'admin-quote':
                     if (window.adminQuote) adminQuote.init();
