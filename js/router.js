@@ -100,6 +100,9 @@ const router = {
                 case 'quote-saya':
                     if (window.quoteSaya) quoteSaya.init();
                     break;
+                case 'admin-quote':
+                    if (window.adminQuote) adminQuote.init();
+                    break;
                 case 'employees':
                     if (window.adminEmployees) adminEmployees.init();
                     break;
