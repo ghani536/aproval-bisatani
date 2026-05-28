@@ -808,12 +808,35 @@
                         <label style="font-size: 11px; font-weight: 700; color: #7c3aed;">NO REKENING</label>
                         <input type="text" id="emp-rekening" placeholder="Tanpa spasi/strip" inputmode="numeric" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace;">
                     </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; color: #ea580c;">TUNJANGAN BENSIN (Rp/bulan)</label>
+                        <input type="number" id="emp-tunjangan-bensin" min="0" value="0" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <small style="display:block; margin-top:4px; color:#94a3b8; font-size:10px;">Dipotong proporsional jika ada cuti/izin (rumus: bensin × hari_hadir / 25).</small>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; color: #ea580c;">TUNJANGAN KOST (Rp/bulan)</label>
+                        <input type="number" id="emp-tunjangan-kost" min="0" value="0" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <small style="display:block; margin-top:4px; color:#94a3b8; font-size:10px;">Flat per bulan, tidak dipotong oleh kehadiran. Isi 0 jika tidak kost.</small>
+                    </div>
                 </div>
                 <div style="margin-top: 25px; display: flex; gap: 10px;">
                     <button type="submit" style="flex: 1; background: #10b981; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 700;">SIMPAN</button>
                     <button type="button" onclick="document.getElementById('modal-employee').style.display='none'" style="flex: 1; background: #f1f5f9; color: #64748b; border: none; padding: 12px; border-radius: 8px; cursor: pointer;">BATAL</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal Detail Karyawan -->
+    <div id="modal-emp-detail" class="modal-custom" style="display:none;">
+        <div class="modal-content" style="max-width:720px; max-height:90vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <h3 style="margin:0;"><i class="fas fa-user-tie" style="color:#10b981;"></i> Detail Karyawan</h3>
+                <button onclick="document.getElementById('modal-emp-detail').style.display='none'" style="background:none; border:none; font-size:20px; cursor:pointer; color:#64748b;">&times;</button>
+            </div>
+            <div id="emp-detail-body">
+                <div style="text-align:center; color:#94a3b8; padding:40px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div>
+            </div>
         </div>
     </div>
 

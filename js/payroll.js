@@ -56,10 +56,12 @@ const payroll = {
     },
     computeFinalTotal(p) {
         const bonus = parseFloat(p.bonusCustom || 0);
+        const bensin = parseFloat(p.tunjBensinTerbayar || 0);
+        const kost = parseFloat(p.tunjKost || 0);
         if (p.jenis_gaji === 'per_jam') {
-            return p.basisGaji - p.bpjs + bonus;
+            return p.basisGaji - p.bpjs + bonus + bensin + kost;
         }
-        return (p.gapok + p.bonusLembur + bonus) - (p.bpjs + p.dendaTelat);
+        return (p.gapok + p.bonusLembur + bonus + bensin + kost) - (p.bpjs + p.dendaTelat);
     },
 
     async calculate() {
@@ -153,6 +155,12 @@ const payroll = {
         const bonusLembur = Math.round(jamLemburTotal * tarifLembur);
         const nominalDenda = Math.round(totalMenitTelat * dendaPerMenit);
 
+        // Tunjangan: bensin proporsional (hari_hadir / 25), kost flat
+        const tunjBensinFull = parseFloat(emp.tunjangan_bensin || 0);
+        const tunjKost = parseFloat(emp.tunjangan_kost || 0);
+        const hadirCapped = Math.min(hadirCount, 25);
+        const tunjBensinTerbayar = Math.round(tunjBensinFull * hadirCapped / 25);
+
         let totalGaji;
         let basisGaji;
         let jamKerjaTotal = 0;
@@ -161,10 +169,10 @@ const payroll = {
             // Per jam: total_jam = (hari_hadir × 8) + jam_lembur; gaji = total_jam × tarif_per_jam
             jamKerjaTotal = (hadirCount * 8) + jamLemburTotal;
             basisGaji = Math.round(jamKerjaTotal * tarifPerJam);
-            totalGaji = basisGaji - bpjs;
+            totalGaji = basisGaji - bpjs + tunjBensinTerbayar + tunjKost;
         } else {
             basisGaji = gajiPokok;
-            totalGaji = (gajiPokok + bonusLembur) - (bpjs + nominalDenda);
+            totalGaji = (gajiPokok + bonusLembur + tunjBensinTerbayar + tunjKost) - (bpjs + nominalDenda);
         }
 
         return {
@@ -181,6 +189,9 @@ const payroll = {
             menitTelat: totalMenitTelat,
             dendaTelat: isPerJam ? 0 : nominalDenda,
             bpjs: bpjs,
+            tunjBensinFull: tunjBensinFull,
+            tunjBensinTerbayar: tunjBensinTerbayar,
+            tunjKost: tunjKost,
             totalGaji: totalGaji
         };
     },
@@ -235,7 +246,12 @@ const payroll = {
                 <td style="color:#ef4444;">${isPerJam ? '<small>n/a</small>' : '-' + p.dendaTelat.toLocaleString('id-ID') + '<br><small>(' + p.menitTelat + ' m)</small>'}</td>
                 <td style="color:#ef4444;">-${p.bpjs.toLocaleString('id-ID')}</td>
                 <td style="background:${isSent ? '#f1f5f9' : '#fef9c3'}; padding:6px;">${bonusInput}</td>
-                <td data-total-id="${p.id}" style="background:#f0fdf4; font-weight:700; color:#166534;">Rp ${p.totalGaji.toLocaleString('id-ID')}</td>
+                <td data-total-id="${p.id}" style="background:#f0fdf4; font-weight:700; color:#166534;">
+                    Rp ${p.totalGaji.toLocaleString('id-ID')}
+                    ${(Number(p.tunjBensinTerbayar || 0) + Number(p.tunjKost || 0)) > 0
+                        ? `<br><small style="color:#ea580c; font-weight:500; font-size:10px;">incl. tunj. Rp ${(Number(p.tunjBensinTerbayar || 0) + Number(p.tunjKost || 0)).toLocaleString('id-ID')}</small>`
+                        : ''}
+                </td>
                 <td style="text-align:center;">${aksiCell}</td>
             </tr>
         `; }).join('');
@@ -277,6 +293,7 @@ const payroll = {
             'Gaji Pokok / Bulan', 'Tarif Per Jam', 'Jam Kerja Total',
             'Hadir (hari)', 'Lembur (jam)', 'Bonus Lembur',
             'Menit Telat', 'Denda Telat', 'BPJS',
+            'Bensin (full)', 'Bensin (terbayar)', 'Kost',
             'Bonus', 'TOTAL GAJI', 'Status Kirim Email'
         ];
         const rows = this.calculatedData.map((p, i) => {
@@ -305,6 +322,9 @@ const payroll = {
                 p.menitTelat,
                 p.dendaTelat,
                 p.bpjs,
+                Number(p.tunjBensinFull || 0),
+                Number(p.tunjBensinTerbayar || 0),
+                Number(p.tunjKost || 0),
                 Number(p.bonusCustom || 0),
                 p.totalGaji,
                 statusKirim
@@ -316,17 +336,20 @@ const payroll = {
             acc.bonusLembur += Number(p.bonusLembur || 0);
             acc.dendaTelat += Number(p.dendaTelat || 0);
             acc.bpjs += Number(p.bpjs || 0);
+            acc.tunjBensinTerbayar += Number(p.tunjBensinTerbayar || 0);
+            acc.tunjKost += Number(p.tunjKost || 0);
             acc.bonusCustom += Number(p.bonusCustom || 0);
             acc.totalGaji += Number(p.totalGaji || 0);
             return acc;
-        }, { bonusLembur:0, dendaTelat:0, bpjs:0, bonusCustom:0, totalGaji:0 });
+        }, { bonusLembur:0, dendaTelat:0, bpjs:0, tunjBensinTerbayar:0, tunjKost:0, bonusCustom:0, totalGaji:0 });
 
-        // Footer row: 19 kolom (sama dengan headers)
+        // Footer row: 22 kolom (sama dengan headers)
         const footer = [
             '', '', `TOTAL (${this.calculatedData.length} karyawan)`, '', '', '', '', // col 1-7
             '', '', '', '', '',                                                       // col 8-12
             totals.bonusLembur, '', totals.dendaTelat, totals.bpjs,                   // col 13-16
-            totals.bonusCustom, totals.totalGaji, ''                                  // col 17-19
+            '', totals.tunjBensinTerbayar, totals.tunjKost,                           // col 17-19
+            totals.bonusCustom, totals.totalGaji, ''                                  // col 20-22
         ];
 
         // CSV content + UTF-8 BOM (supaya Excel buka tanpa garbled char)
@@ -415,6 +438,9 @@ const payroll = {
                     jamKerjaTotal: d.jamKerjaTotal,
                     basisGaji: d.basisGaji,
                     bonusCustom: d.bonusCustom || 0,
+                    tunjBensinFull: d.tunjBensinFull || 0,
+                    tunjBensinTerbayar: d.tunjBensinTerbayar || 0,
+                    tunjKost: d.tunjKost || 0,
                     totalGaji: d.totalGaji
                 };
                 const res = await api.post(payload);
@@ -488,6 +514,9 @@ const payroll = {
                 jamKerjaTotal: data.jamKerjaTotal,
                 basisGaji: data.basisGaji,
                 bonusCustom: data.bonusCustom || 0,
+                tunjBensinFull: data.tunjBensinFull || 0,
+                tunjBensinTerbayar: data.tunjBensinTerbayar || 0,
+                tunjKost: data.tunjKost || 0,
                 totalGaji: data.totalGaji
             };
             const res = await api.post(payload);
