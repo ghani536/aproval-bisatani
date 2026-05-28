@@ -104,6 +104,9 @@ const router = {
                 case 'admin-quote':
                     if (window.adminQuote) adminQuote.init();
                     break;
+                case 'approval':
+                    if (window.adminApproval) adminApproval.init();
+                    break;
                 case 'employees':
                     if (window.adminEmployees) adminEmployees.init();
                     break;

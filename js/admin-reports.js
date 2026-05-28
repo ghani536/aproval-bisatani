@@ -142,9 +142,9 @@ async updateApproval(rowId, status) {
             const editableTypes = ['MASUK', 'PULANG', 'MULAI_LEMBUR', 'SELESAI_LEMBUR'];
             const canEdit = editableTypes.includes(String(log.type));
 
-            // Approval HANYA untuk MASUK + SELESAI_LEMBUR (yang berdampak ke payroll)
+            // Approval di-handle di menu Approval terpisah, di sini cuma display status
             const approvableTypes = ['MASUK', 'SELESAI_LEMBUR'];
-            const canApprove = approvableTypes.includes(String(log.type));
+            const isApprovable = approvableTypes.includes(String(log.type));
 
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -162,24 +162,14 @@ async updateApproval(rowId, status) {
                     <td style="text-align:center; font-weight:bold; color:#2563eb; padding:10px;">${log.totalHours || '0'} j</td>
                     <td style="text-align:center; padding:10px;">
                         <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-                            ${canApprove
+                            ${isApprovable
                                 ? `<span style="font-size:10px; font-weight:bold; color:${colorStatus}">${log.approvalStatus || 'PENDING'}</span>`
-                                : `<span style="font-size:10px; color:#cbd5e1; font-style:italic;">tidak perlu</span>`
+                                : `<span style="font-size:10px; color:#cbd5e1; font-style:italic;">—</span>`
                             }
-                            <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
-                                ${canApprove ? `<button onclick="adminReports.updateApproval(${finalRowId}, 'APPROVED')"
-                                    style="background:#10b981; color:white; border:none; border-radius:4px; padding:5px 8px; cursor:pointer; font-size:11px;" title="Approve">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                                <button onclick="adminReports.updateApproval(${finalRowId}, 'REJECTED')"
-                                    style="background:#ef4444; color:white; border:none; border-radius:4px; padding:5px 8px; cursor:pointer; font-size:11px;" title="Reject">
-                                    <i class="fas fa-times"></i>
-                                </button>` : ''}
-                                ${canEdit ? `<button onclick="adminReports.openEditTime(${finalRowId})"
-                                    style="background:#f59e0b; color:white; border:none; border-radius:4px; padding:5px 8px; cursor:pointer; font-size:11px;" title="Edit waktu">
-                                    <i class="fas fa-pen"></i>
-                                </button>` : ''}
-                            </div>
+                            ${canEdit ? `<button onclick="adminReports.openEditTime(${finalRowId})"
+                                style="background:#f59e0b; color:white; border:none; border-radius:4px; padding:5px 10px; cursor:pointer; font-size:11px;" title="Edit waktu absen">
+                                <i class="fas fa-pen"></i> Edit
+                            </button>` : ''}
                         </div>
                     </td>
                 </tr>

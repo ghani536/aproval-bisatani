@@ -251,6 +251,7 @@
                     <ul class="nav-list">
                         <li class="nav-item" data-page="admin-dashboard"><a href="#" class="nav-link"><i class="fas fa-chart-line"></i><span>Dashboard Admin</span></a></li>
                         <li class="nav-item" data-page="employees"><a href="#" class="nav-link"><i class="fas fa-users"></i><span>Data Karyawan</span></a></li>
+                        <li class="nav-item" data-page="approval"><a href="#" class="nav-link"><i class="fas fa-clipboard-check"></i><span>Approval</span><span id="approval-badge" style="display:none; background:#ef4444; color:white; border-radius:10px; padding:2px 8px; font-size:10px; font-weight:700; margin-left:auto;">0</span></a></li>
                     </ul>
                 </div>
                 <div class="nav-section">
@@ -361,6 +362,66 @@
                         <h3 style="margin:0 0 8px; color:#1e293b;">Menu Cuti & Izin</h3>
                         <p style="color:#64748b; margin:0;">Fitur sedang dibangun 🚧</p>
                         <p style="color:#94a3b8; font-size:13px; margin:10px 0 0;">Akan tersedia: kuota cuti tahunan, form pengajuan, upload surat keterangan, dan persetujuan admin.</p>
+                    </div>
+                </div>
+
+                <div class="page" id="page-approval">
+                    <div style="padding:20px; background:#fff; border-radius:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fas fa-clipboard-check" style="color:#10b981;"></i> Persetujuan</h3>
+                                <p style="color:#64748b; font-size:13px; margin:6px 0 0;">Approve atau reject kehadiran & lembur yang menunggu persetujuan</p>
+                            </div>
+                            <button onclick="adminApproval.load()" style="background:#10b981; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer;"><i class="fas fa-sync"></i> Refresh</button>
+                        </div>
+
+                        <!-- Tabs filter type -->
+                        <div style="display:flex; gap:4px; background:#f1f5f9; padding:4px; border-radius:10px; margin-bottom:14px;">
+                            <button id="atab-all" onclick="adminApproval.setTab('all')" style="flex:1; padding:10px; background:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; color:#1e293b; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                                <i class="fas fa-list"></i> Semua <span id="cnt-all" style="background:#e2e8f0; color:#475569; padding:1px 8px; border-radius:8px; font-size:11px; margin-left:4px;">0</span>
+                            </button>
+                            <button id="atab-masuk" onclick="adminApproval.setTab('MASUK')" style="flex:1; padding:10px; background:transparent; border:none; border-radius:8px; cursor:pointer; font-weight:600; color:#64748b;">
+                                <i class="fas fa-sign-in-alt"></i> Kehadiran <span id="cnt-masuk" style="background:#dcfce7; color:#166534; padding:1px 8px; border-radius:8px; font-size:11px; margin-left:4px;">0</span>
+                            </button>
+                            <button id="atab-lembur" onclick="adminApproval.setTab('SELESAI_LEMBUR')" style="flex:1; padding:10px; background:transparent; border:none; border-radius:8px; cursor:pointer; font-weight:600; color:#64748b;">
+                                <i class="fas fa-moon"></i> Lembur <span id="cnt-lembur" style="background:#e0e7ff; color:#3730a3; padding:1px 8px; border-radius:8px; font-size:11px; margin-left:4px;">0</span>
+                            </button>
+                        </div>
+
+                        <!-- Status filter -->
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+                            <label style="font-size:13px; color:#64748b; font-weight:600;">Status:</label>
+                            <select id="approval-status-filter" onchange="adminApproval.render()" style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                                <option value="PENDING" selected>Pending saja</option>
+                                <option value="">Semua status</option>
+                                <option value="APPROVED">Approved</option>
+                                <option value="REJECTED">Rejected</option>
+                            </select>
+                            <input type="date" id="approval-date-from" onchange="adminApproval.render()" style="padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                            <span style="color:#94a3b8;">–</span>
+                            <input type="date" id="approval-date-to" onchange="adminApproval.render()" style="padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                        </div>
+
+                        <!-- Bulk action bar -->
+                        <div id="approval-bulk-bar" style="display:none; background:#eef2ff; border:1px solid #c7d2fe; padding:10px 14px; border-radius:8px; margin-bottom:14px; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <span style="color:#4338ca; font-weight:600; font-size:13px;"><span id="bulk-count">0</span> terpilih</span>
+                            <button onclick="adminApproval.bulkAction('APPROVED')" style="background:#10b981; color:white; border:none; padding:7px 14px; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px;"><i class="fas fa-check"></i> Approve Terpilih</button>
+                            <button onclick="adminApproval.bulkAction('REJECTED')" style="background:#ef4444; color:white; border:none; padding:7px 14px; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px;"><i class="fas fa-times"></i> Reject Terpilih</button>
+                            <button onclick="adminApproval.clearSelection()" style="background:transparent; color:#64748b; border:1px solid #cbd5e1; padding:7px 12px; border-radius:6px; cursor:pointer; font-size:13px;">Batal</button>
+                        </div>
+
+                        <!-- Select all -->
+                        <div id="approval-select-all-wrap" style="display:none; padding:8px 14px; background:#f8fafc; border-radius:6px; margin-bottom:10px;">
+                            <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+                                <input type="checkbox" id="approval-select-all" onchange="adminApproval.toggleSelectAll(this.checked)" style="cursor:pointer;">
+                                <span>Pilih semua di tab ini</span>
+                            </label>
+                        </div>
+
+                        <!-- Card list -->
+                        <div id="approval-cards" style="display:flex; flex-direction:column; gap:10px;">
+                            <div style="text-align:center; color:#94a3b8; padding:40px 20px;"><i class="fas fa-sync fa-spin"></i> Memuat data approval...</div>
+                        </div>
                     </div>
                 </div>
 
@@ -660,6 +721,7 @@
     <script src="js/quote-vote.js"></script>
     <script src="js/quote-page.js"></script>
     <script src="js/admin-quote.js"></script>
+    <script src="js/admin-approval.js"></script>
     <script src="js/admin-reports.js"></script>
     <script src="js/admin-dashboard.js"></script>
 
