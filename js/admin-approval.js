@@ -154,8 +154,8 @@ const adminApproval = {
             ? `<input type="checkbox" ${isChecked ? 'checked' : ''} onchange="adminApproval.toggleRow('${log.rowId}', this.checked)" style="margin-right:8px; cursor:pointer; width:18px; height:18px;">`
             : '';
 
-        const fotoHtml = log.image
-            ? `<img src="${log.image}" onclick="adminReports.showLightbox('${log.image}', '${(log.userName||'').replace(/'/g,"\\'")}', '${String(log.quote||'').replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:48px; height:48px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid #e2e8f0;">`
+        const fotoHtml = log.hasImage
+            ? `<button onclick="adminReports.openPhotoLazy(${log.rowId}, '${(log.userName||'').replace(/'/g,"\\'")}', '${String(log.quote||'').replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:48px; height:48px; border-radius:8px; cursor:zoom-in; border:1px solid #e2e8f0; background:#f0fdf4; color:#10b981; padding:0;" title="Klik untuk lihat foto"><i class="fas fa-image" style="font-size:18px;"></i></button>`
             : '<div style="width:48px; height:48px; background:#f1f5f9; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#94a3b8;"><i class="fas fa-user"></i></div>';
 
         // Tampilkan info detail per type
