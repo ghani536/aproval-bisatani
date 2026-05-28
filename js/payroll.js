@@ -207,32 +207,13 @@ const payroll = {
                         onchange="payroll.setBonus('${String(p.id).replace(/'/g,"\\'")}', this.value)"
                         style="width:100px; padding:6px 8px; border:1px solid #fbbf24; border-radius:6px; background:#fff; font-weight:600; color:#854d0e; text-align:right;" />`;
             const aksiCell = isSent ? `
-                <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-                    <span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:10px; font-size:10px; font-weight:700;">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
+                    <span style="background:#dcfce7; color:#166534; padding:4px 10px; border-radius:10px; font-size:10px; font-weight:700; white-space:nowrap;">
                         <i class="fas fa-check-circle"></i> TERKIRIM
                     </span>
                     <small style="color:#64748b; font-size:10px;">${sent.timestampDisplay || ''}</small>
-                    <div style="display:flex; gap:4px;">
-                        <button onclick="payroll.showSlip('${p.id}')" title="Lihat slip"
-                            style="background:#94a3b8; color:white; border:none; padding:5px 8px; border-radius:6px; cursor:pointer; font-size:11px;">
-                            <i class="fas fa-file-invoice"></i>
-                        </button>
-                        <button onclick="payroll.sendEmail('${p.id}', true)" title="Kirim ulang slip"
-                            style="background:#f59e0b; color:white; border:none; padding:5px 8px; border-radius:6px; cursor:pointer; font-size:11px;">
-                            <i class="fas fa-redo"></i>
-                        </button>
-                    </div>
                 </div>` : `
-                <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">
-                    <button onclick="payroll.showSlip('${p.id}')" title="Lihat / Cetak Slip"
-                        style="background:#6366f1; color:white; border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12px;">
-                        <i class="fas fa-file-invoice"></i>
-                    </button>
-                    <button onclick="payroll.sendEmail('${p.id}')" title="Kirim slip via email"
-                        style="background:#10b981; color:white; border:none; padding:7px 10px; border-radius:6px; cursor:pointer; font-size:12px;">
-                        <i class="fas fa-envelope"></i>
-                    </button>
-                </div>`;
+                <span style="color:#94a3b8; font-size:11px; font-style:italic;">belum dikirim</span>`;
 
             return `
             <tr style="${rowStyle}">
@@ -248,6 +229,168 @@ const payroll = {
                 <td style="text-align:center;">${aksiCell}</td>
             </tr>
         `; }).join('');
+    },
+
+    // ========== AKSI GLOBAL: DOWNLOAD CSV ==========
+    downloadCSV() {
+        if (!this.calculatedData || this.calculatedData.length === 0) {
+            return alert("Belum ada data. Klik 'Hitung' dulu.");
+        }
+        const bulanNama = document.getElementById('payroll-month').options[document.getElementById('payroll-month').selectedIndex].text;
+        const tahun = document.getElementById('payroll-year').value;
+
+        const csvEscape = (v) => {
+            const s = String(v == null ? '' : v);
+            return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+
+        const headers = [
+            'No', 'ID', 'Nama', 'Email', 'Jenis Gaji',
+            'Gaji Pokok / Bulan', 'Tarif Per Jam', 'Jam Kerja Total',
+            'Hadir (hari)', 'Lembur (jam)', 'Bonus Lembur',
+            'Menit Telat', 'Denda Telat', 'BPJS',
+            'Bonus Custom', 'TOTAL GAJI', 'Status Kirim Email'
+        ];
+        const rows = this.calculatedData.map((p, i) => {
+            const emp = this.employees.find(e => String(e.id) === String(p.id));
+            const email = emp ? (emp.email || '') : '';
+            const sent = this.sentMap[String(p.id)];
+            const statusKirim = sent ? `TERKIRIM ${sent.timestampDisplay}` : 'BELUM';
+            return [
+                i + 1,
+                p.id,
+                p.name,
+                email,
+                p.jenis_gaji === 'per_jam' ? 'PER JAM' : 'BULANAN',
+                p.jenis_gaji === 'per_jam' ? 0 : p.gapok,
+                p.jenis_gaji === 'per_jam' ? p.tarifPerJam : 0,
+                p.jamKerjaTotal ? p.jamKerjaTotal.toFixed(2) : 0,
+                p.hadir,
+                p.lemburJam.toFixed(2),
+                p.bonusLembur,
+                p.menitTelat,
+                p.dendaTelat,
+                p.bpjs,
+                Number(p.bonusCustom || 0),
+                p.totalGaji,
+                statusKirim
+            ];
+        });
+
+        // CSV content + UTF-8 BOM (supaya Excel buka tanpa garbled char)
+        const csv = '﻿' + [headers, ...rows]
+            .map(r => r.map(csvEscape).join(','))
+            .join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Payroll_PT_Bisatani_${bulanNama}_${tahun}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    },
+
+    // ========== AKSI GLOBAL: KIRIM SLIP KE SEMUA KARYAWAN ==========
+    async sendAllEmails() {
+        if (!this.calculatedData || this.calculatedData.length === 0) {
+            return alert("Belum ada data. Klik 'Hitung' dulu.");
+        }
+        // Build target list: karyawan dgn email valid yg BELUM dikirim
+        const allWithEmail = this.calculatedData.map(d => {
+            const emp = this.employees.find(e => String(e.id) === String(d.id));
+            const email = emp ? String(emp.email || '').trim() : '';
+            return { data: d, email: email, sent: !!this.sentMap[String(d.id)] };
+        }).filter(x => x.email && x.email.indexOf('@') > 0);
+
+        const belum = allWithEmail.filter(x => !x.sent);
+        const sudah = allWithEmail.filter(x => x.sent);
+        const tanpaEmail = this.calculatedData.length - allWithEmail.length;
+
+        if (belum.length === 0) {
+            const msg = `Semua ${sudah.length} karyawan sudah dikirim untuk periode ini.` +
+                (tanpaEmail > 0 ? `\n\n${tanpaEmail} karyawan tidak punya email valid.` : '') +
+                `\n\nKirim ULANG ke semua?`;
+            if (!confirm(msg)) return;
+            return this._batchSend(allWithEmail);
+        }
+
+        const confirmMsg =
+            `Kirim slip ke ${belum.length} karyawan?` +
+            (sudah.length > 0 ? `\n(${sudah.length} sudah dikirim sebelumnya — di-skip)` : '') +
+            (tanpaEmail > 0 ? `\n(${tanpaEmail} karyawan tidak punya email valid — di-skip)` : '');
+        if (!confirm(confirmMsg)) return;
+
+        return this._batchSend(belum);
+    },
+
+    async _batchSend(targets) {
+        if (!targets || targets.length === 0) return;
+
+        const btn = document.getElementById('payroll-btn-send-all');
+        const originalText = btn ? btn.innerHTML : '';
+        if (btn) btn.disabled = true;
+
+        const bulanNama = document.getElementById('payroll-month').options[document.getElementById('payroll-month').selectedIndex].text;
+        const tahun = document.getElementById('payroll-year').value;
+
+        let sukses = 0, gagal = 0;
+        const errors = [];
+
+        for (let i = 0; i < targets.length; i++) {
+            const t = targets[i];
+            const d = t.data;
+            if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Mengirim ${i+1}/${targets.length} (${d.name})...`;
+
+            try {
+                const payload = {
+                    action: 'sendSlipEmail',
+                    email: t.email,
+                    name: d.name,
+                    id: d.id,
+                    bulan: bulanNama,
+                    tahun: tahun,
+                    jenis_gaji: d.jenis_gaji,
+                    gapok: d.gapok,
+                    hadir: d.hadir,
+                    lemburJam: d.lemburJam,
+                    bonusLembur: d.bonusLembur,
+                    menitTelat: d.menitTelat,
+                    dendaTelat: d.dendaTelat,
+                    bpjs: d.bpjs,
+                    tarifPerJam: d.tarifPerJam,
+                    jamKerjaTotal: d.jamKerjaTotal,
+                    basisGaji: d.basisGaji,
+                    bonusCustom: d.bonusCustom || 0,
+                    totalGaji: d.totalGaji
+                };
+                const res = await api.post(payload);
+                if (res && res.success) {
+                    sukses++;
+                    this.sentMap[String(d.id)] = {
+                        userId: String(d.id),
+                        timestampDisplay: (res.sent && res.sent.timestampDisplay) || 'baru saja',
+                        totalGaji: d.totalGaji,
+                        email: t.email
+                    };
+                } else {
+                    gagal++;
+                    errors.push(`${d.name}: ${res.error || 'unknown'}`);
+                }
+            } catch (e) {
+                gagal++;
+                errors.push(`${d.name}: ${e.message}`);
+            }
+        }
+
+        // Re-render seluruh tabel
+        this.renderTable(this.calculatedData);
+
+        if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+
+        let summary = `Selesai!\n✅ Sukses: ${sukses}\n${gagal > 0 ? '❌ Gagal: ' + gagal + '\n\n' + errors.slice(0, 5).join('\n') : ''}`;
+        alert(summary);
     },
 
     async sendEmail(id, isResend) {
