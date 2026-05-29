@@ -43,33 +43,47 @@ const adminDashboard = {
             const dateLabel = document.getElementById('dash-date-label');
             if (dateLabel) dateLabel.textContent = `${namaHari[today.getDay()]}, ${today.getDate()} ${namaBulan[today.getMonth()]} ${today.getFullYear()}`;
 
-            // Periode payroll berjalan
-            const todayDate = today.getDate();
-            let pMonth = today.getMonth() + 1, pYear = today.getFullYear();
-            if (todayDate >= 26) { pMonth += 1; if (pMonth > 12) { pMonth = 1; pYear++; } }
-            const startPeriod = new Date(pYear, pMonth - 2, 26, 0, 0, 0);
-            const endPeriod = new Date(pYear, pMonth - 1, 25, 23, 59, 59);
-            const bulanNamaPeriode = namaBulan[pMonth - 1];
-
-            const [resEmp, resAtt, resCfg, resPengajuan, resPayrollSent] = await Promise.all([
+            // Ambil settings dulu untuk dapat periode_start_day
+            const [resEmp, resAtt, resCfg, resPengajuan, resHolidays] = await Promise.all([
                 api.post({ action: 'getEmployees' }),
                 api.post({ action: 'getAllAttendanceData' }),
                 api.post({ action: 'getSettings' }),
                 api.post({ action: 'getAllPengajuan' }),
-                api.post({ action: 'getPayrollSentLog', bulan: bulanNamaPeriode, tahun: String(pYear) })
+                api.post({ action: 'getHolidays', tahun: String(today.getFullYear()) })
             ]);
+            const cfgEarly = (resCfg && resCfg.success) ? (resCfg.data || {}) : {};
+            const startDay = parseInt(cfgEarly.periode_start_day || cfgEarly.periodestartday || 26);
+            const endDay = startDay - 1;
+
+            // Periode payroll berjalan
+            const todayDate = today.getDate();
+            let pMonth = today.getMonth() + 1, pYear = today.getFullYear();
+            if (todayDate >= startDay) { pMonth += 1; if (pMonth > 12) { pMonth = 1; pYear++; } }
+            const startPeriod = new Date(pYear, pMonth - 2, startDay, 0, 0, 0);
+            const endPeriod = new Date(pYear, pMonth - 1, endDay, 23, 59, 59);
+            const bulanNamaPeriode = namaBulan[pMonth - 1];
+
+            const resPayrollSent = await api.post({ action: 'getPayrollSentLog', bulan: bulanNamaPeriode, tahun: String(pYear) });
 
             const employees = (resEmp && resEmp.success) ? (resEmp.data || []) : [];
             const attendance = (resAtt && resAtt.success) ? (resAtt.data || []) : [];
-            const config = (resCfg && resCfg.success) ? (resCfg.data || {}) : {};
+            const config = cfgEarly;
             const pengajuan = (resPengajuan && resPengajuan.success) ? (resPengajuan.data || []) : [];
+            const holidays = (resHolidays && resHolidays.success) ? (resHolidays.data || []) : [];
             const sentMap = {};
             if (resPayrollSent && resPayrollSent.success && Array.isArray(resPayrollSent.data)) {
                 resPayrollSent.data.forEach(s => { sentMap[String(s.userId)] = s; });
             }
 
-            this._render6Stats(employees, attendance, pengajuan, config, startPeriod, endPeriod);
-            this._renderStatusHariIni(employees, attendance, pengajuan, today);
+            // Cek hari libur / weekend hari ini
+            const todayYMD = this._ymd(today);
+            const todayHoliday = holidays.find(h => h.tanggal === todayYMD);
+            const isWeekend = (today.getDay() === 0 || today.getDay() === 6);
+            const isOffDay = !!todayHoliday || isWeekend;
+
+            this._renderHolidayBanner(todayHoliday, isWeekend);
+            this._render6Stats(employees, attendance, pengajuan, config, startPeriod, endPeriod, isOffDay);
+            this._renderStatusHariIni(employees, attendance, pengajuan, today, isOffDay);
             this._renderAktivitasTerbaru(attendance);
             this._renderChartTrend(attendance, today);
             this._renderChartLembur(employees, attendance, startPeriod, endPeriod);
@@ -179,7 +193,26 @@ const adminDashboard = {
         return { totalGaji, hadirCount, jamLemburTotal, totalMenitTelat };
     },
 
-    _render6Stats(employees, attendance, pengajuan, config, startPeriod, endPeriod) {
+    _renderHolidayBanner(todayHoliday, isWeekend) {
+        // Inject banner di atas stat cards kalau ada
+        const dateLabel = document.getElementById('dash-date-label');
+        if (!dateLabel) return;
+        const parent = dateLabel.closest('div[style*="gradient"]');
+        if (!parent) return;
+        // Remove existing banner
+        const existing = document.getElementById('dash-holiday-banner');
+        if (existing) existing.remove();
+        if (!todayHoliday && !isWeekend) return;
+        const banner = document.createElement('div');
+        banner.id = 'dash-holiday-banner';
+        banner.style.cssText = 'background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; padding:12px 16px; border-radius:10px; margin-bottom:16px; display:flex; align-items:center; gap:10px; border-left:4px solid #f59e0b;';
+        banner.innerHTML = todayHoliday
+            ? `<i class="fas fa-calendar-day" style="font-size:20px;"></i><div><b>Hari ini libur:</b> ${this._esc(todayHoliday.nama_libur)}<br><small style="opacity:0.8;">Karyawan tidak wajib absen hari ini</small></div>`
+            : `<i class="fas fa-couch" style="font-size:20px;"></i><div><b>Weekend</b><br><small style="opacity:0.8;">Karyawan tidak wajib absen hari ini</small></div>`;
+        parent.parentNode.insertBefore(banner, parent.nextSibling);
+    },
+
+    _render6Stats(employees, attendance, pengajuan, config, startPeriod, endPeriod, isOffDay) {
         document.getElementById('dash-total-emp').textContent = employees.length;
 
         // Hadir hari ini (MASUK dengan status not rejected, tanggal = today)
@@ -208,8 +241,8 @@ const adminDashboard = {
             if (tToday >= rs && tToday <= re) cutiIzinTodayIds.add(String(p.userId));
         });
 
-        // Belum absen: total - hadir - cuti/izin
-        const belumAbsen = Math.max(0, employees.length - hadirCount - cutiIzinTodayIds.size);
+        // Belum absen: total - hadir - cuti/izin. Kalau off-day, set 0
+        const belumAbsen = isOffDay ? 0 : Math.max(0, employees.length - hadirCount - cutiIzinTodayIds.size);
         document.getElementById('dash-belum-absen').textContent = belumAbsen;
 
         // Pengajuan pending
@@ -227,10 +260,33 @@ const adminDashboard = {
         document.getElementById('dash-total-payroll').textContent = this._fmtRp(totalPayroll);
     },
 
-    _renderStatusHariIni(employees, attendance, pengajuan, today) {
+    _renderStatusHariIni(employees, attendance, pengajuan, today, isOffDay) {
         const wrap = document.getElementById('dash-status-today');
         const todayYMD = this._ymd(today);
         const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        if (isOffDay && employees.length > 0) {
+            // Tampilkan info hari libur dengan opsi expand
+            const grouped = { hadir: [] };
+            attendance.forEach(a => {
+                if (a.type !== 'MASUK') return;
+                if (String(a.approvalStatus || '').toUpperCase() === 'REJECTED') return;
+                if (this._ymd(new Date(a.timestamp)) === todayYMD) {
+                    const emp = employees.find(e => String(e.id) === String(a.userId));
+                    if (emp && !grouped.hadir.find(x => String(x.id) === String(emp.id))) grouped.hadir.push(emp);
+                }
+            });
+            const namesHadir = grouped.hadir.slice(0, 6).map(e => `<a href="#" onclick="event.preventDefault(); adminEmployees && adminEmployees.showDetail && adminEmployees.showDetail('${String(e.id).replace(/'/g, "\\'")}')" style="color:inherit; text-decoration:none; background:#dcfce7; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600;">${this._esc(e.name)}</a>`).join(' ');
+            wrap.innerHTML = `
+                <div style="background:#fef3c7; padding:14px; border-radius:8px; text-align:center; border:1px dashed #fbbf24; margin-bottom:8px;">
+                    <i class="fas fa-bed" style="font-size:28px; color:#f59e0b;"></i>
+                    <div style="font-weight:600; color:#92400e; margin-top:6px; font-size:14px;">Hari libur — tidak ada wajib absen</div>
+                    <div style="font-size:11px; color:#854d0e; margin-top:2px;">${grouped.hadir.length > 0 ? `${grouped.hadir.length} karyawan tetap absen (lembur?)` : 'Tidak ada karyawan yang absen'}</div>
+                </div>
+                ${grouped.hadir.length > 0 ? `<div style="padding:8px 0;"><div style="font-size:11px; color:#10b981; font-weight:700; margin-bottom:4px;"><i class="fas fa-check-circle"></i> Yang Absen Hari Ini (${grouped.hadir.length})</div><div>${namesHadir}${grouped.hadir.length > 6 ? `<span style="color:#94a3b8; font-size:11px;"> +${grouped.hadir.length - 6}</span>` : ''}</div></div>` : ''}
+            `;
+            return;
+        }
 
         // Map userId → status hari ini
         const hadirIds = new Set();

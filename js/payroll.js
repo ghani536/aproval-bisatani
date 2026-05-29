@@ -96,8 +96,11 @@ const payroll = {
             this.config = resCfg.data || {};
             this.pengajuan = (resPengajuan && resPengajuan.success) ? (resPengajuan.data || []) : [];
 
-            const startDate = new Date(year, month - 1, 26, 0, 0, 0);
-            const endDate = new Date(year, month, 25, 23, 59, 59);
+            // Periode payroll: [start_day bulan lalu] sampai [start_day-1 bulan ini]
+            const startDay = parseInt(this.config.periode_start_day || 26);
+            const endDay = startDay - 1;
+            const startDate = new Date(year, month - 1, startDay, 0, 0, 0);
+            const endDate = new Date(year, month, endDay, 23, 59, 59);
 
             this.calculatedData = this.employees.map(emp => this.calculateSingleEmployee(emp, startDate, endDate));
             // Apply bonus custom dari localStorage ke calculatedData + recalc total
