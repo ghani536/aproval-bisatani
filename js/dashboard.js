@@ -1,220 +1,359 @@
 /**
- * Portal Karyawan - Dashboard
- * Dashboard functionality and charts
+ * Portal Karyawan - Dashboard Personal
+ * Status hari ini, kuota cuti, stats periode, streak, chart kehadiran,
+ * riwayat gaji, pengajuan terbaru, dan tips.
  */
-
 const dashboard = {
-    initialized: false,
-    attendanceData: [],
+    _chart: null,
 
     async init() {
-        if (this.initialized) return;
-
-        await this.loadData();
-
-        this.updateWelcomeCard();
-        this.updateStats();
-        this.updateSessionInfo();
-        this.updateProgressBar();
-
-        this.initialized = true;
+        await this.renderAll();
     },
 
-    async loadData() {
-        try {
-            const currentUser = auth.getCurrentUser();
-            if (currentUser && currentUser.id) {
-                // Fetch attendance and global settings concurrently
-                const [attResult, settingsRes] = await Promise.all([
-                    api.getAttendance(currentUser.id),
-                    api.getSettings()
-                ]);
-
-                this.attendanceData = (attResult && attResult.success) ? attResult.data : [];
-
-                // Sync global schedule shift mapping from Admin to this employee's local instance
-                if (settingsRes && settingsRes.success && settingsRes.data) {
-                    const globalSettings = settingsRes.data;
-                    const loadedSchedules = {};
-                    Object.keys(globalSettings).forEach(k => {
-                        if (k.startsWith('shift_schedule_')) {
-                            const monthKey = k.replace('shift_schedule_', '');
-                            try {
-                                loadedSchedules[monthKey] = JSON.parse(globalSettings[k]);
-                            } catch (e) { }
-                        }
-                    });
-                    if (Object.keys(loadedSchedules).length > 0) {
-                        storage.set('shift_schedule', loadedSchedules);
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error loading dashboard data:', error);
-            this.attendanceData = [];
-        }
+    _esc(s) {
+        return String(s == null ? '' : s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
     },
 
-    updateWelcomeCard() {
-        const welcomeCard = document.querySelector('.welcome-card');
-        const greetingEl = document.querySelector('.welcome-content h2');
-        const shiftEl = document.getElementById('welcome-shift');
-        const iconEl = document.querySelector('.welcome-illustration i');
+    _ymd(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    },
 
-        if (!welcomeCard || !greetingEl) return;
+    _fmtRp(n) {
+        return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+    },
 
+    _renderGreeting() {
+        const user = auth.user || {};
+        const namaShort = (user.name || user.nama || 'Karyawan').split(' ')[0];
         const hour = new Date().getHours();
-        let greeting = 'Selamat Pagi';
-        let icon = 'fa-sun';
-        let className = 'morning';
+        let greeting = 'Selamat Pagi', icon = 'fa-sun', sub = 'Mulai hari dengan semangat 💪';
+        if (hour >= 11 && hour < 15) { greeting = 'Selamat Siang'; icon = 'fa-sun'; sub = 'Jangan lupa istirahat ya 🍱'; }
+        else if (hour >= 15 && hour < 18) { greeting = 'Selamat Sore'; icon = 'fa-cloud-sun'; sub = 'Tetap fokus sampai pulang 🌅'; }
+        else if (hour >= 18) { greeting = 'Selamat Malam'; icon = 'fa-moon'; sub = 'Istirahat yang cukup ya 🌙'; }
 
-        if (hour >= 11 && hour < 15) {
-            greeting = 'Selamat Siang';
-            icon = 'fa-sun';
-            className = 'afternoon';
-        } else if (hour >= 15 && hour < 18) {
-            greeting = 'Selamat Sore';
-            icon = 'fa-cloud-sun';
-            className = 'evening';
-        } else if (hour >= 18) {
-            greeting = 'Selamat Malam';
-            icon = 'fa-moon';
-            className = 'evening';
+        const elG = document.getElementById('emp-greeting');
+        const elS = document.getElementById('emp-greeting-sub');
+        const elI = document.getElementById('emp-greeting-icon');
+        if (elG) elG.innerHTML = `${greeting}, <b>${this._esc(namaShort)}</b>! 👋`;
+        if (elS) elS.textContent = sub;
+        if (elI) elI.className = `fas ${icon}`;
+    },
+
+    async renderAll() {
+        this._renderGreeting();
+
+        const user = auth.user || {};
+        if (!user.id) {
+            console.warn("Dashboard: user belum login");
+            return;
         }
 
-        const userName = auth.getCurrentUser()?.name?.split(' ')[0] || 'User';
-        greetingEl.innerHTML = `${greeting}, <span id="welcome-name">${userName}</span>! 👋`;
+        const today = new Date();
+        const tahun = today.getFullYear();
+        // Periode payroll berjalan (26 lalu - 25 ini)
+        const todayDate = today.getDate();
+        let pMonth = today.getMonth() + 1, pYear = tahun;
+        if (todayDate >= 26) { pMonth += 1; if (pMonth > 12) { pMonth = 1; pYear++; } }
+        const startPeriod = new Date(pYear, pMonth - 2, 26, 0, 0, 0);
+        const endPeriod = new Date(pYear, pMonth - 1, 25, 23, 59, 59);
 
-        if (iconEl) {
-            iconEl.className = `fas ${icon}`;
-        }
+        // Bulan kalender berjalan (untuk getMyQuotes)
+        const bulanSekarang = today.getMonth() + 1;
+        const tahunSekarang = today.getFullYear();
 
-        // Update card class for different gradient
-        welcomeCard.className = `welcome-card ${className}`;
-
-        // Update shift info
-        const shifts = storage.get('shifts', []);
-        let currentShiftName = auth.getCurrentUser()?.shift || 'Pagi';
-
-        // Automated shift lookup from admin schedule
         try {
-            const userId = String(auth.getCurrentUser()?.id);
-            const schedules = storage.get('shift_schedule', {});
-            const todayObj = new Date();
-            const currentYear = todayObj.getFullYear();
-            const currentMonth = todayObj.getMonth();
-            const currentDay = todayObj.getDate();
-            const key = `${currentYear}-${currentMonth}`;
+            const [resAtt, resPengajuan, resQuota, resQuotes, resDetail] = await Promise.all([
+                api.post({ action: 'getAllAttendanceData' }),
+                api.post({ action: 'getMyPengajuan', userId: user.id }),
+                api.post({ action: 'getLeaveQuota', userId: user.id, tahun: tahun }),
+                api.post({ action: 'getMyQuotes', userId: user.id, bulan: bulanSekarang, tahun: tahunSekarang }),
+                api.post({ action: 'getEmployeeDetail', userId: user.id, limitMonths: 3 })
+            ]);
 
-            console.log('Dashboard Shift Sync - Key:', key, 'UserId:', userId, 'Day:', currentDay);
+            const allAttendance = (resAtt && resAtt.success) ? (resAtt.data || []) : [];
+            const myAttendance = allAttendance.filter(a => String(a.userId) === String(user.id));
+            const myPengajuan = (resPengajuan && resPengajuan.success) ? (resPengajuan.data || []) : [];
+            const quota = (resQuota && resQuota.success) ? resQuota : { kuota: 7, terpakai: 0, sisa: 7, tahun: tahun };
+            const myQuotes = (resQuotes && resQuotes.success) ? (resQuotes.data || []) : [];
+            const riwayatGaji = (resDetail && resDetail.success) ? (resDetail.riwayat_gaji || []) : [];
 
-            if (schedules[key] && schedules[key][userId]) {
-                const assignedShift = schedules[key][userId][currentDay];
-                console.log('Dashboard Shift Sync - Found Shift:', assignedShift);
-                if (assignedShift) {
-                    currentShiftName = assignedShift;
-                }
-            } else {
-                console.log('Dashboard Shift Sync - Missing Schedule key or User record.');
-            }
+            this._renderStatusToday(myAttendance, today);
+            this._renderKuota(quota);
+            this._renderStatsPeriode(myAttendance, startPeriod, endPeriod);
+            this._renderStreak(myAttendance, today);
+            this._renderQuoteCount(myQuotes);
+            this._renderPengajuanRecent(myPengajuan);
+            this._renderChartTrend(myAttendance, today);
+            this._renderRiwayatGaji(riwayatGaji);
+            this._renderTips(quota);
+
         } catch (e) {
-            console.error('Error reading shift schedule:', e);
+            console.error('Dashboard error:', e);
+        }
+    },
+
+    _renderStatusToday(myAttendance, today) {
+        const wrap = document.getElementById('emp-status-today');
+        const todayYMD = this._ymd(today);
+        const todayLogs = myAttendance.filter(a => this._ymd(new Date(a.timestamp)) === todayYMD);
+
+        const findLog = (type) => todayLogs.find(a => a.type === type);
+        const masuk = findLog('MASUK');
+        const pulang = findLog('PULANG');
+        const mLembur = findLog('MULAI_LEMBUR');
+        const sLembur = findLog('SELESAI_LEMBUR');
+
+        if (!masuk) {
+            wrap.innerHTML = `
+                <div style="background:#fef3c7; padding:14px; border-radius:8px; text-align:center; border:1px dashed #fbbf24;">
+                    <i class="fas fa-clock" style="font-size:24px; color:#f59e0b;"></i>
+                    <div style="font-weight:600; color:#92400e; margin-top:6px; font-size:14px;">Belum absen hari ini</div>
+                    <div style="font-size:11px; color:#854d0e; margin-top:2px;">Jangan lupa absen lewat menu <b>Absen</b> di bawah</div>
+                </div>`;
+            return;
         }
 
-        const activeShift = shifts.find(s => s.name === currentShiftName) || shifts[0] || { name: 'Pagi', startTime: '08:00', endTime: '17:00' };
+        const tFmt = (ts) => {
+            const d = new Date(ts);
+            return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        };
 
-        if (shiftEl) {
-            if (currentShiftName === 'Libur') {
-                shiftEl.textContent = `Shift: Libur (Tidak ada jadwal)`;
+        const masukTime = tFmt(masuk.timestamp);
+        const isTelat = masuk.statusTelat && masuk.statusTelat !== '0' && masuk.statusTelat !== '-' && parseInt(masuk.statusTelat) > 0;
+        const telatMnt = isTelat ? parseInt(masuk.statusTelat) : 0;
+
+        // Durasi kerja
+        let durasi = '';
+        if (pulang) {
+            const ms = new Date(pulang.timestamp) - new Date(masuk.timestamp);
+            const jam = Math.floor(ms / 3600000), mnt = Math.floor((ms % 3600000) / 60000);
+            durasi = `${jam}j ${mnt}m`;
+        } else {
+            const ms = new Date() - new Date(masuk.timestamp);
+            const jam = Math.floor(ms / 3600000), mnt = Math.floor((ms % 3600000) / 60000);
+            durasi = `${jam}j ${mnt}m (berjalan)`;
+        }
+
+        let html = `
+            <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:8px;">
+                <div style="background:#dcfce7; padding:10px; border-radius:8px;">
+                    <div style="font-size:10px; color:#166534; font-weight:700;"><i class="fas fa-sign-in-alt"></i> MASUK</div>
+                    <div style="font-size:18px; font-weight:700; color:#166534;">${masukTime}</div>
+                    ${isTelat ? `<div style="font-size:10px; color:#ef4444; font-weight:600;">⚠️ Telat ${telatMnt} menit</div>` : `<div style="font-size:10px; color:#166534;">✓ Tepat waktu</div>`}
+                </div>
+                <div style="background:${pulang ? '#dbeafe' : '#f1f5f9'}; padding:10px; border-radius:8px;">
+                    <div style="font-size:10px; color:${pulang ? '#1e40af' : '#94a3b8'}; font-weight:700;"><i class="fas fa-sign-out-alt"></i> PULANG</div>
+                    <div style="font-size:18px; font-weight:700; color:${pulang ? '#1e40af' : '#94a3b8'};">${pulang ? tFmt(pulang.timestamp) : '—'}</div>
+                    <div style="font-size:10px; color:${pulang ? '#1e40af' : '#94a3b8'};">Durasi: ${durasi}</div>
+                </div>
+            </div>`;
+
+        if (mLembur || sLembur) {
+            html += `<div style="background:#ede9fe; padding:10px; border-radius:8px; margin-top:8px;">
+                <div style="font-size:10px; color:#5b21b6; font-weight:700;"><i class="fas fa-moon"></i> LEMBUR</div>
+                <div style="display:flex; justify-content:space-between; font-size:13px; color:#5b21b6; margin-top:2px;">
+                    <span>Mulai: <b>${mLembur ? tFmt(mLembur.timestamp) : '—'}</b></span>
+                    <span>Selesai: <b>${sLembur ? tFmt(sLembur.timestamp) : '—'}</b></span>
+                </div>
+                ${sLembur && sLembur.totalHours ? `<div style="font-size:11px; color:#5b21b6; margin-top:2px;">Total: ${Number(sLembur.totalHours).toFixed(2)} jam</div>` : ''}
+            </div>`;
+        }
+
+        wrap.innerHTML = html;
+    },
+
+    _renderKuota(quota) {
+        const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        setText('emp-kuota-tahun', quota.tahun || new Date().getFullYear());
+        setText('emp-kuota-sisa', quota.sisa);
+        setText('emp-kuota-total', quota.kuota);
+        setText('emp-kuota-terpakai', quota.terpakai);
+    },
+
+    _renderStatsPeriode(myAttendance, start, end) {
+        let hadir = 0, telat = 0, lembur = 0;
+        myAttendance.forEach(log => {
+            const t = new Date(log.timestamp);
+            if (t < start || t > end) return;
+            const isRejected = String(log.approvalStatus || '').toUpperCase() === 'REJECTED';
+            if (log.type === 'MASUK' && !isRejected) {
+                hadir++;
+                if (log.statusTelat && log.statusTelat !== '0' && log.statusTelat !== '-') {
+                    telat += parseInt(log.statusTelat) || 0;
+                }
+            }
+            if (log.type === 'SELESAI_LEMBUR' && !isRejected) {
+                lembur += parseFloat(String(log.totalHours || '0').replace(',', '.'));
+            }
+        });
+        const pct = Math.round((hadir / 25) * 100);
+        document.getElementById('emp-stat-hadir').textContent = hadir;
+        document.getElementById('emp-stat-hadir-sub').textContent = `${pct}% · target 25`;
+        document.getElementById('emp-stat-telat').textContent = telat;
+        document.getElementById('emp-stat-lembur').textContent = lembur.toFixed(1);
+    },
+
+    _renderStreak(myAttendance, today) {
+        // Streak: hari berturut-turut MASUK tanpa telat (mulai dari hari ini ke belakang)
+        // Skip hari libur / weekend / tidak ada absen → streak break.
+        // Untuk simpel: scan 30 hari ke belakang, count berturut-turut dari hari ini/kemarin yang ada MASUK & tidak telat.
+        const masukByDay = {};
+        myAttendance.forEach(log => {
+            if (log.type !== 'MASUK') return;
+            if (String(log.approvalStatus || '').toUpperCase() === 'REJECTED') return;
+            const ymd = this._ymd(new Date(log.timestamp));
+            const isTelat = log.statusTelat && log.statusTelat !== '0' && log.statusTelat !== '-' && parseInt(log.statusTelat) > 0;
+            masukByDay[ymd] = { tepat: !isTelat };
+        });
+
+        // Hari ini kalau ada MASUK tanpa telat = +1. Mulai scan kemarin ke belakang, skip weekend.
+        const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
+        let streak = 0;
+        const cursor = new Date(today);
+        // Mulai dari hari ini (kalau sudah absen tepat waktu) atau kemarin
+        const todayYMD = this._ymd(cursor);
+        if (masukByDay[todayYMD] && masukByDay[todayYMD].tepat) streak++;
+        // Scan ke belakang max 60 hari (cover weekend skips)
+        for (let i = 1; i <= 60 && streak < 60; i++) {
+            cursor.setDate(cursor.getDate() - 1);
+            if (isWeekend(cursor)) continue; // skip weekend, tidak break
+            const ymd = this._ymd(cursor);
+            if (masukByDay[ymd] && masukByDay[ymd].tepat) streak++;
+            else break;
+        }
+
+        document.getElementById('emp-streak').innerHTML = `${streak} <small style="font-size:11px; font-weight:500;">hari</small>`;
+        const sub = document.getElementById('emp-streak-sub');
+        if (sub) {
+            if (streak >= 10) sub.textContent = 'Luar biasa! Pertahankan 🎉';
+            else if (streak >= 5) sub.textContent = 'Mantap, terus konsisten!';
+            else if (streak >= 1) sub.textContent = 'Lanjutkan! Tepat waktu = hemat denda';
+            else sub.textContent = 'Mulai hari ini, bisa! 💪';
+        }
+    },
+
+    _renderQuoteCount(myQuotes) {
+        const cnt = myQuotes.length;
+        document.getElementById('emp-quote-count').innerHTML = `${cnt} <small style="font-size:11px; font-weight:500;">quote</small>`;
+    },
+
+    _renderPengajuanRecent(myPengajuan) {
+        const wrap = document.getElementById('emp-pengajuan-recent');
+        if (myPengajuan.length === 0) {
+            wrap.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:14px; font-size:13px;">Belum ada pengajuan. Ajukan via menu Cuti/Izin</div>';
+            return;
+        }
+        const top2 = myPengajuan.slice(0, 2);
+        wrap.innerHTML = top2.map(p => {
+            const st = String(p.status || 'PENDING').toUpperCase();
+            const stColor = st === 'APPROVED' ? '#10b981' : st === 'REJECTED' ? '#ef4444' : '#f59e0b';
+            const stBg = st === 'APPROVED' ? '#dcfce7' : st === 'REJECTED' ? '#fee2e2' : '#fef3c7';
+            const stText = st === 'APPROVED' ? 'Disetujui' : st === 'REJECTED' ? 'Ditolak' : 'Menunggu';
+            const icon = p.tipe === 'CUTI' ? 'fa-umbrella-beach' : 'fa-file-medical';
+            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9; gap:8px;">
+                <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+                    <i class="fas ${icon}" style="color:${p.tipe === 'CUTI' ? '#10b981' : '#3b82f6'};"></i>
+                    <div style="min-width:0;">
+                        <div style="font-size:13px; font-weight:600; color:#1e293b;">${p.tipe} · ${p.jumlah_hari} hari</div>
+                        <div style="font-size:11px; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.tanggal_mulai} → ${p.tanggal_selesai}</div>
+                    </div>
+                </div>
+                <span style="background:${stBg}; color:${stColor}; padding:3px 10px; border-radius:10px; font-size:10px; font-weight:700; white-space:nowrap;">${stText}</span>
+            </div>`;
+        }).join('');
+    },
+
+    _renderChartTrend(myAttendance, today) {
+        const canvas = document.getElementById('emp-chart-trend');
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        const labels = [], data = [], colors = [];
+        const namaHariShort = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const ymd = this._ymd(d);
+            labels.push(`${namaHariShort[d.getDay()]} ${d.getDate()}`);
+            const log = myAttendance.find(a => a.type === 'MASUK' && this._ymd(new Date(a.timestamp)) === ymd && String(a.approvalStatus || '').toUpperCase() !== 'REJECTED');
+            if (log) {
+                const isTelat = log.statusTelat && log.statusTelat !== '0' && log.statusTelat !== '-' && parseInt(log.statusTelat) > 0;
+                data.push(isTelat ? parseInt(log.statusTelat) : 1);
+                colors.push(isTelat ? '#ef4444' : '#10b981');
             } else {
-                shiftEl.textContent = `Shift: ${activeShift.name} (${activeShift.startTime} - ${activeShift.endTime})`;
+                data.push(0);
+                colors.push('#e2e8f0');
             }
         }
-    },
 
-    updateStats() {
-        const attendance = this.attendanceData;
-
-        // Calculate stats
-        const total = Math.max(26, attendance.length); // Assuming min 26 working days base
-        const present = attendance.filter(a => a.status === 'ontime').length;
-        const late = attendance.filter(a => a.status === 'late').length;
-        const absent = attendance.filter(a => a.status === 'absent').length;
-
-        // Update donut chart values
-        const presentPercent = total > 0 ? Math.round((present / total) * 100) : 0;
-
-        // Update center text
-        const donutValue = document.querySelector('.donut-value');
-        if (donutValue) {
-            donutValue.textContent = `${presentPercent}%`;
-        }
-
-        // Update legend
-        const legendValues = document.querySelectorAll('.legend-value');
-        if (legendValues.length >= 3) {
-            legendValues[0].textContent = `${present} hari`;
-            legendValues[1].textContent = `${late} hari`;
-            legendValues[2].textContent = `${absent} hari`;
-        }
-    },
-
-    updateSessionInfo() {
-        // Get today's attendance
-        const today = dateTime.getLocalDate();
-        const attendance = this.attendanceData;
-        const todayAttendance = attendance.find(a => a.date === today);
-
-        const clockInEl = document.getElementById('dashboard-clock-in');
-        const clockOutEl = document.getElementById('dashboard-clock-out');
-        const durationEl = document.getElementById('dashboard-duration');
-
-        if (clockInEl) clockInEl.textContent = '--:--';
-        if (clockOutEl) clockOutEl.textContent = '--:--';
-        if (durationEl) durationEl.textContent = '0j 0m';
-
-        if (todayAttendance) {
-            if (clockInEl) clockInEl.textContent = todayAttendance.clockIn || '--:--';
-            if (clockOutEl) clockOutEl.textContent = todayAttendance.clockOut || '--:--';
-
-            if (todayAttendance.clockIn && todayAttendance.clockOut && durationEl) {
-                durationEl.textContent = dateTime.calculateDuration(
-                    todayAttendance.clockIn,
-                    todayAttendance.clockOut
-                );
+        if (this._chart) this._chart.destroy();
+        this._chart = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Status',
+                    data: data,
+                    backgroundColor: colors,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const v = ctx.parsed.y;
+                                if (v === 0) return 'Tidak absen';
+                                if (v === 1) return 'Hadir tepat waktu ✓';
+                                return `Hadir, telat ${v} menit`;
+                            }
+                        }
+                    }
+                },
+                scales: { y: { display: false, beginAtZero: true } }
             }
-        }
+        });
     },
 
-    updateProgressBar() {
-        const now = new Date();
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const currentTime = currentHour + (currentMinute / 60);
-
-        // Assuming 8-hour work day from 8 AM to 5 PM
-        const startHour = 8;
-        const endHour = 17;
-        const totalHours = endHour - startHour;
-
-        let progress = ((currentTime - startHour) / totalHours) * 100;
-        progress = Math.max(0, Math.min(100, progress));
-
-        const progressFill = document.getElementById('work-progress');
-        if (progressFill) {
-            progressFill.style.width = `${progress}%`;
+    _renderRiwayatGaji(riwayatGaji) {
+        const wrap = document.getElementById('emp-riwayat-gaji');
+        if (!riwayatGaji || riwayatGaji.length === 0) {
+            wrap.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:14px; font-size:13px;">Belum ada slip gaji yang dikirim ke kamu</div>';
+            return;
         }
+        const namaBulan = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        wrap.innerHTML = riwayatGaji.map((r, i) => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; ${i < riwayatGaji.length - 1 ? 'border-bottom:1px solid #f1f5f9;' : ''}">
+                <div>
+                    <div style="font-size:13px; font-weight:600; color:#1e293b;">${namaBulan[r.bulan] || r.bulan} ${r.tahun}</div>
+                    <div style="font-size:10px; color:#94a3b8;">Dikirim: ${r.timestamp_kirim || '—'}</div>
+                </div>
+                <div style="font-size:14px; font-weight:700; color:#166534;">${this._fmtRp(r.total_gaji)}</div>
+            </div>
+        `).join('');
+    },
+
+    _renderTips(quota) {
+        const tips = [];
+        if (quota.sisa <= 2 && quota.sisa > 0) {
+            tips.push(`Sisa cuti tahun ini tinggal <b>${quota.sisa} hari</b>. Atur dari sekarang ya!`);
+        }
+        const hour = new Date().getHours();
+        if (hour < 9) {
+            tips.push('Jam masuk standar: <b>08:00</b>. Absen sebelum itu untuk hindari denda telat.');
+        }
+        tips.push('Lembur dihitung dari jam yang ditentukan oleh admin (default 17:00). Jangan lupa absen <b>SELESAI_LEMBUR</b> agar terhitung.');
+        tips.push('Tulis quote saat MASUK & PULANG — bisa ikut <b>voting bulanan</b>!');
+
+        const el = document.getElementById('emp-tips');
+        if (el) el.innerHTML = '• ' + tips.join('<br>• ');
     }
 };
 
-// Global init function called by router
-window.initDashboard = async () => {
-    await dashboard.init();
-};
-
-// Auto-update progress every minute
-setInterval(() => {
-    if (document.getElementById('page-dashboard')?.classList.contains('active')) {
-        dashboard.updateProgressBar();
-    }
-}, 60000);
+window.dashboard = dashboard;
