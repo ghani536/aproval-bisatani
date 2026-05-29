@@ -78,9 +78,30 @@ const adminEmployees = {
         }
     },
 
-    togglePasswordVisible(id) {
-        this.passwordVisibility[id] = !this.passwordVisibility[id];
-        this.renderTable();
+    async resetPwd(id, name) {
+        const newPwd = prompt(`Reset password untuk ${name}?\n\nKetik password baru (min 4 karakter). Kosongkan = default ke ID karyawan.`);
+        if (newPwd === null) return; // batal
+        const pwd = newPwd.trim();
+        if (pwd && pwd.length < 4) { alert('Password min 4 karakter'); return; }
+        try {
+            const res = await api.post({
+                action: 'saveEmployee',
+                id: id,
+                password: pwd || id, // kosong = default ke ID
+                // Send hanya field yang ada di emp existing supaya tidak override field lain
+                // saveEmployee akan preserve existing untuk field yang tidak dikirim
+                name: (this.employees.find(e => String(e.id) === String(id)) || {}).name,
+                email: (this.employees.find(e => String(e.id) === String(id)) || {}).email
+            });
+            if (res && res.success) {
+                alert(`✅ Password ${name} di-reset ke ${pwd || 'ID karyawan: ' + id}.\n\nBeritahu karyawan untuk login & ganti password.`);
+                this.loadEmployees();
+            } else {
+                alert('❌ Gagal: ' + ((res && res.error) || 'cek koneksi'));
+            }
+        } catch (e) {
+            alert('❌ Error: ' + e.message);
+        }
     },
 
     toggleShowAdmin() {
@@ -140,16 +161,16 @@ const adminEmployees = {
                 ? `<span style="color:#6366f1; font-weight:600;">Rp ${Number(emp.tarif_per_jam || 0).toLocaleString('id-ID')}</span><br><small style="color:#94a3b8;">/jam</small>`
                 : `<span>Rp ${Number(emp.gaji_pokok || 0).toLocaleString('id-ID')}</span><br><small style="color:#94a3b8;">/bulan</small>`;
 
-            const pwdVisible = !!this.passwordVisibility[emp.id];
-            const rawPwd = emp.password || '';
-            const pwdDisplay = pwdVisible
-                ? `<code style="background:#f1f5f9; padding:3px 6px; border-radius:4px; font-size:12px;">${rawPwd || '(kosong)'}</code>`
-                : `<span style="letter-spacing:2px; color:#94a3b8;">${'•'.repeat(Math.min(rawPwd.length, 8) || 4)}</span>`;
+            // SECURITY: password sekarang di-hash di server. Frontend tidak bisa lihat plain.
+            // Cell menampilkan status hashed + tombol Reset (set ke ID default).
+            const isHashed = !!emp.password_is_hashed;
             const pwdCell = `
                 <div style="display:flex; align-items:center; gap:6px; justify-content:center;">
-                    ${pwdDisplay}
-                    <button onclick="adminEmployees.togglePasswordVisible('${String(emp.id).replace(/'/g, "\\'")}')" style="background:transparent; border:none; color:#64748b; cursor:pointer; padding:2px;" title="${pwdVisible ? 'Sembunyikan' : 'Tampilkan'}">
-                        <i class="fas ${pwdVisible ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                    ${isHashed
+                        ? '<span style="color:#10b981; font-size:11px;"><i class="fas fa-lock"></i> ter-hash</span>'
+                        : '<span style="color:#f59e0b; font-size:11px;" title="Login sekali untuk auto-upgrade"><i class="fas fa-unlock"></i> legacy</span>'}
+                    <button onclick="adminEmployees.resetPwd('${String(emp.id).replace(/'/g, "\\'")}', '${String(emp.name).replace(/'/g, "\\'")}')" style="background:#fef3c7; border:1px solid #fde68a; color:#92400e; cursor:pointer; padding:2px 8px; border-radius:4px; font-size:11px;" title="Reset password">
+                        <i class="fas fa-key"></i> Reset
                     </button>
                 </div>
             `;
@@ -308,11 +329,13 @@ const adminEmployees = {
         }
         if (tarifJamEl) tarifJamEl.value = emp.tarif_per_jam || 0;
 
-        // Password: clear field, placeholder show current
+        // Password: clear field, placeholder netral (plain text tidak available untuk security)
         const pwdEl = document.getElementById('emp-password');
         if (pwdEl) {
             pwdEl.value = "";
-            pwdEl.placeholder = emp.password ? `Saat ini: ${emp.password} (kosongkan = tetap)` : "Belum ada password";
+            pwdEl.placeholder = emp.password_is_hashed
+                ? "Kosongkan = password tidak diubah"
+                : "Belum ter-hash, akan upgrade saat login berikutnya";
         }
 
         // Bank + No Rekening
