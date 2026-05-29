@@ -751,42 +751,190 @@
                 </div>
 
                 <div class="page" id="page-settings">
-                    <form id="form-settings" onsubmit="return false;" style="background:#fff; padding:20px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
-                        <h4 style="margin-bottom:20px;">Konfigurasi Sistem PT. BISATANI</h4>
-                        
-                        <div style="margin-bottom:15px;">
-                            <label>Jam Masuk Kerja</label>
-                            <input type="time" id="set-jam-masuk" class="form-control" required>
+                    <!-- Tab navigation -->
+                    <div style="background:#fff; padding:6px; border-radius:10px; margin-bottom:14px; display:flex; gap:4px; flex-wrap:wrap; overflow-x:auto;">
+                        <button class="set-tab-btn active" data-set-tab="jam" onclick="settings.switchTab('jam')" style="flex:1; min-width:120px; padding:10px; background:#10b981; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-clock"></i> Jam Kerja</button>
+                        <button class="set-tab-btn" data-set-tab="payroll" onclick="settings.switchTab('payroll')" style="flex:1; min-width:120px; padding:10px; background:transparent; color:#64748b; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-wallet"></i> Penggajian</button>
+                        <button class="set-tab-btn" data-set-tab="cuti" onclick="settings.switchTab('cuti')" style="flex:1; min-width:120px; padding:10px; background:transparent; color:#64748b; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-umbrella-beach"></i> Cuti</button>
+                        <button class="set-tab-btn" data-set-tab="libur" onclick="settings.switchTab('libur')" style="flex:1; min-width:120px; padding:10px; background:transparent; color:#64748b; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-calendar-day"></i> Hari Libur</button>
+                        <button class="set-tab-btn" data-set-tab="brand" onclick="settings.switchTab('brand')" style="flex:1; min-width:120px; padding:10px; background:transparent; color:#64748b; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-building"></i> Branding</button>
+                        <button class="set-tab-btn" data-set-tab="maint" onclick="settings.switchTab('maint')" style="flex:1; min-width:120px; padding:10px; background:transparent; color:#64748b; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-tools"></i> Maintenance</button>
+                    </div>
+
+                    <!-- Section: Jam Kerja -->
+                    <div class="set-section" id="set-sec-jam" style="background:#fff; padding:20px; border-radius:12px; margin-bottom:14px;">
+                        <h4 style="margin:0 0 14px; font-size:15px;"><i class="fas fa-clock" style="color:#10b981;"></i> Jam Kerja & Lembur</h4>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px;">
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">JAM MASUK KERJA</label>
+                                <input type="time" id="set-jam-masuk" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;" required>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">JAM PULANG KERJA</label>
+                                <input type="time" id="set-jam-pulang" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;" required>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">BATAS MULAI LEMBUR</label>
+                                <input type="time" id="set-jam-lembur-min" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">TOLERANSI TELAT (menit)</label>
+                                <input type="number" id="set-toleransi-telat" min="0" max="60" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                <small style="color:#94a3b8; font-size:11px;">Mis. 5 = telat 1-5 menit dianggap tepat waktu</small>
+                            </div>
                         </div>
-
-                        <div style="margin-bottom:15px;">
-                            <label>Jam Pulang Kerja</label>
-                            <input type="time" id="set-jam-pulang" class="form-control" required>
+                        <div style="margin-top:14px; padding:10px 12px; background:#f8fafc; border-radius:8px; display:flex; align-items:center; gap:10px;">
+                            <input type="checkbox" id="set-ot-anytime" style="width:18px; height:18px;">
+                            <label for="set-ot-anytime" style="margin:0; font-size:13px; font-weight:600; cursor:pointer;">Izinkan Mulai Lembur Kapan Saja</label>
                         </div>
+                    </div>
 
-                        <hr>
-
-                        <div style="margin-bottom:15px;">
-                            <label>Upah Lembur (per jam)</label>
-                            <input type="number" id="set-overtime-rate" class="form-control" placeholder="Contoh: 15000">
+                    <!-- Section: Penggajian -->
+                    <div class="set-section hidden" id="set-sec-payroll" style="background:#fff; padding:20px; border-radius:12px; margin-bottom:14px; display:none;">
+                        <h4 style="margin:0 0 14px; font-size:15px;"><i class="fas fa-wallet" style="color:#166534;"></i> Konstanta Penggajian</h4>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px;">
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">UPAH LEMBUR (Rp/jam)</label>
+                                <input type="number" id="set-overtime-rate" min="0" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;" placeholder="20000">
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">HARI KERJA / BULAN</label>
+                                <input type="number" id="set-hari-kerja" min="20" max="31" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                <small style="color:#94a3b8; font-size:11px;">Default 25 (untuk hitung gaji harian)</small>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">JAM KERJA / HARI</label>
+                                <input type="number" id="set-jam-kerja" min="4" max="12" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                <small style="color:#94a3b8; font-size:11px;">Default 8 (untuk per-jam)</small>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">PERIODE PAYROLL MULAI (tgl)</label>
+                                <input type="number" id="set-periode-start" min="1" max="28" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                <small style="color:#94a3b8; font-size:11px;">Default 26 (periode: 26 bln lalu → 25 bln ini)</small>
+                            </div>
                         </div>
+                    </div>
 
-                        <div style="margin-bottom:15px;">
-                            <label>Batas Minimal Mulai Lembur</label>
-                            <input type="time" id="set-jam-lembur-min" class="form-control">
+                    <!-- Section: Cuti -->
+                    <div class="set-section hidden" id="set-sec-cuti" style="background:#fff; padding:20px; border-radius:12px; margin-bottom:14px; display:none;">
+                        <h4 style="margin:0 0 14px; font-size:15px;"><i class="fas fa-umbrella-beach" style="color:#0891b2;"></i> Kuota Cuti Berdasarkan Masa Kerja</h4>
+                        <p style="font-size:12px; color:#64748b; margin:0 0 12px;">Karyawan baru tidak dapat kuota cuti sampai masa kerja minimum tercapai. Setelah masa loyalty, kuota naik.</p>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">MASA KERJA MIN (bulan) untuk dapat cuti</label>
+                                <input type="number" id="set-kuota-min-bulan" min="0" max="60" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                <small style="color:#94a3b8; font-size:11px;">Default 12 (probation 1 tahun)</small>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">KUOTA CUTI STANDAR (hari)</label>
+                                <input type="number" id="set-kuota-standar" min="0" max="30" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                <small style="color:#94a3b8; font-size:11px;">Default 7 hari/tahun</small>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">MASA LOYALTY (bulan)</label>
+                                <input type="number" id="set-loyalty-min-bulan" min="12" max="120" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                <small style="color:#94a3b8; font-size:11px;">Default 36 (≥3 tahun = loyalty)</small>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">KUOTA CUTI LOYALTY (hari)</label>
+                                <input type="number" id="set-kuota-loyalty" min="0" max="30" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                <small style="color:#94a3b8; font-size:11px;">Default 12 hari/tahun</small>
+                            </div>
                         </div>
-
-                        <div style="margin-bottom:20px; padding:10px; background:#f8fafc; border-radius:8px; display:flex; align-items:center; gap:10px;">
-                            <input type="checkbox" id="set-ot-anytime" style="width:20px; height:20px;">
-                            <label for="set-ot-anytime" style="margin:0; font-size:13px; font-weight:600; cursor:pointer;">
-                                Izinkan Mulai Lembur Kapan Saja
-                            </label>
+                        <div id="set-cuti-preview" style="margin-top:14px; padding:12px; background:#ecfeff; border-radius:8px; border-left:3px solid #0891b2; font-size:12px; color:#155e75;">
+                            Preview rumus muncul saat input diubah.
                         </div>
+                    </div>
 
-                        <button type="button" id="btn-save-settings" class="btn-primary" style="width:100%;">
-                            <i class="fas fa-save"></i> Simpan Perubahan
-                        </button>
-                    </form>
+                    <!-- Section: Hari Libur -->
+                    <div class="set-section hidden" id="set-sec-libur" style="background:#fff; padding:20px; border-radius:12px; margin-bottom:14px; display:none;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <h4 style="margin:0; font-size:15px;"><i class="fas fa-calendar-day" style="color:#f59e0b;"></i> Hari Libur Nasional</h4>
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <select id="libur-tahun-filter" onchange="settings.loadHolidays()" style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;"></select>
+                                <button onclick="settings.openHolidayForm()" style="background:#10b981; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:600; font-size:12px;"><i class="fas fa-plus"></i> Tambah</button>
+                            </div>
+                        </div>
+                        <div id="libur-list"><div style="text-align:center; color:#94a3b8; padding:20px; font-size:13px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                    </div>
+
+                    <!-- Section: Branding -->
+                    <div class="set-section hidden" id="set-sec-brand" style="background:#fff; padding:20px; border-radius:12px; margin-bottom:14px; display:none;">
+                        <h4 style="margin:0 0 14px; font-size:15px;"><i class="fas fa-building" style="color:#7c3aed;"></i> Branding & Email</h4>
+                        <div style="display:grid; grid-template-columns:1fr; gap:14px;">
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">NAMA PERUSAHAAN</label>
+                                <input type="text" id="set-nama-perusahaan" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;" placeholder="PT. Bisatani">
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">ALAMAT PERUSAHAAN</label>
+                                <textarea id="set-alamat" rows="2" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px; font-family:inherit; resize:vertical;" placeholder="Untuk footer slip email"></textarea>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">LOGO URL</label>
+                                <input type="url" id="set-logo-url" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;" placeholder="https://...">
+                                <small style="color:#94a3b8; font-size:11px;">Link gambar untuk header slip email (opsional)</small>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">NAMA PENGIRIM EMAIL</label>
+                                <input type="text" id="set-email-sender" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;" placeholder="PT. Bisatani Payroll">
+                                <small style="color:#94a3b8; font-size:11px;">Nama yang muncul di inbox karyawan</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Maintenance -->
+                    <div class="set-section hidden" id="set-sec-maint" style="background:#fff; padding:20px; border-radius:12px; margin-bottom:14px; display:none;">
+                        <h4 style="margin:0 0 14px; font-size:15px;"><i class="fas fa-tools" style="color:#475569;"></i> Maintenance & Backup</h4>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
+                            <button onclick="settings.backupAll()" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; padding:14px; border-radius:8px; cursor:pointer; text-align:left;">
+                                <div style="font-weight:700; font-size:13px;"><i class="fas fa-download"></i> Backup Data ke CSV</div>
+                                <div style="font-size:11px; opacity:0.8; margin-top:4px;">Download semua sheet (Employees, Attendance, Pengajuan, Payroll_Sent, Settings, Holidays) sebagai ZIP CSV.</div>
+                            </button>
+                            <button onclick="settings.clearLocalCache()" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:14px; border-radius:8px; cursor:pointer; text-align:left;">
+                                <div style="font-weight:700; font-size:13px;"><i class="fas fa-broom"></i> Clear Cache Browser</div>
+                                <div style="font-size:11px; opacity:0.8; margin-top:4px;">Hapus localStorage (cache settings, bonus payroll draft, dsb). Tidak hapus data spreadsheet.</div>
+                            </button>
+                            <button onclick="settings.openResetPwd()" style="background:#fef2f2; color:#991b1b; border:1px solid #fecaca; padding:14px; border-radius:8px; cursor:pointer; text-align:left;">
+                                <div style="font-weight:700; font-size:13px;"><i class="fas fa-key"></i> Reset Password Karyawan</div>
+                                <div style="font-size:11px; opacity:0.8; margin-top:4px;">Reset password ke default (= ID karyawan). Buka menu Data Karyawan.</div>
+                            </button>
+                            <div style="background:#f8fafc; color:#475569; border:1px solid #e2e8f0; padding:14px; border-radius:8px;">
+                                <div style="font-weight:700; font-size:13px;"><i class="fas fa-info-circle"></i> Info Sistem</div>
+                                <div style="font-size:11px; margin-top:6px; line-height:1.6;" id="set-info-sistem">
+                                    Versi: <b>v51</b><br>
+                                    GAS: terhubung ✓<br>
+                                    Spreadsheet: 1M9mNvHsyiX...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tombol Simpan global -->
+                    <button id="btn-save-settings" style="width:100%; background:#10b981; color:white; border:none; padding:14px; border-radius:10px; cursor:pointer; font-weight:700; font-size:14px; box-shadow:0 4px 8px rgba(16,185,129,0.2);">
+                        <i class="fas fa-save"></i> Simpan Semua Perubahan
+                    </button>
+
+                    <!-- Modal Holiday Form -->
+                    <div id="modal-holiday" class="modal-custom" style="display:none;">
+                        <div class="modal-content" style="background:white; padding:24px; border-radius:12px; width:92%; max-width:420px;">
+                            <h4 style="margin:0 0 14px;"><i class="fas fa-calendar-day" style="color:#f59e0b;"></i> Tambah Hari Libur</h4>
+                            <div style="margin-bottom:12px;">
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">TANGGAL</label>
+                                <input type="date" id="lib-tanggal" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                            </div>
+                            <div style="margin-bottom:14px;">
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">NAMA LIBUR</label>
+                                <input type="text" id="lib-nama" placeholder="Mis. Hari Raya Nyepi" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button onclick="document.getElementById('modal-holiday').style.display='none'" style="flex:1; background:#e2e8f0; color:#475569; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;">Batal</button>
+                                <button onclick="settings.saveHoliday()" style="flex:2; background:#10b981; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;"><i class="fas fa-save"></i> Simpan</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="height:80px;"></div>
                 </div>
 
                 <div class="page" id="page-admin-dashboard">
