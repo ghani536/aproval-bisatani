@@ -66,7 +66,13 @@ const adminDashboard = {
             const endPeriod = new Date(pYear, pMonth - 1, endDay, 23, 59, 59);
             const bulanNamaPeriode = namaBulan[pMonth - 1];
 
-            const resPayrollSent = await api.post({ action: 'getPayrollSentLog', bulan: bulanNamaPeriode, tahun: String(pYear) });
+            // Untuk alert "slip belum dikirim", fetch periode yang label = bulan ini
+            // (= periode yang baru berakhir kalau today >= startDay, atau current period
+            // kalau today < startDay). Beda dengan bulanNamaPeriode yang shift ke bulan depan.
+            const alertPeriodMonth = today.getMonth() + 1;
+            const alertPeriodLabel = namaBulan[alertPeriodMonth - 1];
+            const alertPeriodYear = today.getFullYear();
+            const resPayrollSent = await api.post({ action: 'getPayrollSentLog', bulan: alertPeriodLabel, tahun: String(alertPeriodYear) });
 
             // Skip akun admin dari semua counter & report
             const employees = ((resEmp && resEmp.success) ? (resEmp.data || []) : []).filter(e => String(e.role || '').toLowerCase() !== 'admin');
