@@ -55,6 +55,30 @@ const api = {
     // 3. FUNGSI LOGIN (Pintu Masuk Utama)
     async login(email, password) {
         return await this.get('login', { email, password });
+    },
+
+    // 4. Cached settings (TTL 5 menit) — supaya tidak fetch berulang dari banyak file
+    _settingsCache: null,
+    _settingsCacheTime: 0,
+    async getCachedSettings(force) {
+        const now = Date.now();
+        if (!force && this._settingsCache && (now - this._settingsCacheTime) < 300000) {
+            return this._settingsCache;
+        }
+        try {
+            const res = await this.post({ action: 'getSettings' });
+            if (res && res.success) {
+                this._settingsCache = res.data || {};
+                this._settingsCacheTime = now;
+            }
+        } catch (e) { /* silent */ }
+        return this._settingsCache || {};
+    },
+
+    // 5. Helper: ambil periode_start_day dari settings (default 26)
+    async getPeriodStartDay() {
+        const cfg = await this.getCachedSettings();
+        return parseInt(cfg.periode_start_day || cfg.periodestartday || 26);
     }
 };
 

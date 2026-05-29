@@ -52,11 +52,13 @@ const adminEmployees = {
         const inputGaji = document.getElementById('emp-gaji');
         const inputDenda = document.getElementById('emp-denda');
         if (inputGaji && inputDenda) {
-            inputGaji.addEventListener('input', () => {
+            inputGaji.addEventListener('input', async () => {
                 const gaji = parseFloat(inputGaji.value) || 0;
-                // Rumus PT. BISATANI: Gaji / 25 / 8 / 60
-                const hasil = Math.round(gaji / 25 / 8 / 60);
-                inputDenda.value = hasil;
+                // Pakai konstanta dari Settings (hari_kerja_per_bulan & jam_kerja_per_hari)
+                const cfg = await api.getCachedSettings();
+                const hari = parseInt(cfg.hari_kerja_per_bulan || cfg.harikerjaperbulan || 25);
+                const jam = parseFloat(cfg.jam_kerja_per_hari || cfg.jamkerjaperhari || 8);
+                inputDenda.value = Math.round(gaji / hari / jam / 60);
             });
         }
     },

@@ -8,13 +8,14 @@ const adminQuote = {
     allQuotes: [],
     leaderboard: null, // optional
 
-    init() {
-        // Default ke periode payroll current
+    async init() {
+        // Default ke periode payroll current (pakai periode_start_day dari Settings)
         const today = new Date();
         const todayDate = today.getDate();
         let month = today.getMonth() + 1;
         let year = today.getFullYear();
-        if (todayDate >= 26) {
+        const startDay = await api.getPeriodStartDay();
+        if (todayDate >= startDay) {
             month += 1;
             if (month > 12) { month = 1; year++; }
         }

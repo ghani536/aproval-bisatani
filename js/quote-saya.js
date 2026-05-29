@@ -6,16 +6,16 @@
 const quoteSaya = {
     _initialized: false,
 
-    init() {
+    async init() {
         // Set default ke periode payroll yang sedang berjalan
         const today = new Date();
         const todayDate = today.getDate();
         let month = today.getMonth() + 1; // 1-12
         let year = today.getFullYear();
 
-        // Periode payroll: kalau hari ini >= 26, periode mulai dari 26 bulan ini
-        // (anchor = bulan depan, karena periode 26 bulan-1 -> 25 bulan)
-        if (todayDate >= 26) {
+        // Periode payroll: pakai periode_start_day dari Settings (default 26)
+        const startDay = await api.getPeriodStartDay();
+        if (todayDate >= startDay) {
             month += 1;
             if (month > 12) { month = 1; year++; }
         }

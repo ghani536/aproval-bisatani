@@ -109,13 +109,12 @@ const auth = {
         }
 
         if (this.user) {
-            // Update UI Identitas
+            // Update UI Identitas (welcome-name sudah obsolete — dashboard karyawan
+            // pakai emp-greeting di dashboard.js, dashboard admin pakai header sendiri)
             const nameEl = document.getElementById('user-name');
-            const welcomeEl = document.getElementById('welcome-name');
             const roleEl = document.getElementById('user-role');
 
             if (nameEl) nameEl.textContent = this.user.name;
-            if (welcomeEl) welcomeEl.textContent = this.user.name.split(' ')[0];
             if (roleEl) roleEl.textContent = this.user.role === 'admin' ? 'Administrator' : 'Karyawan';
             
             // Manajemen Menu Admin vs Karyawan
