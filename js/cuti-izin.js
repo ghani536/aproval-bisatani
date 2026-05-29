@@ -81,7 +81,50 @@ const cutiIzin = {
     },
 
     openForm() {
-        document.getElementById('ci-tipe').value = 'CUTI';
+        // Cek kuota cuti — kalau 0 (belum memenuhi masa kerja), disable opsi CUTI
+        const tipeSelect = document.getElementById('ci-tipe');
+        const cutiOption = tipeSelect.querySelector('option[value="CUTI"]');
+        const izinOption = tipeSelect.querySelector('option[value="IZIN"]');
+        const quotaInfo = this._lastQuota || {};
+        const kuotaMax = Number(quotaInfo.kuota || 0);
+        const sisa = Number(quotaInfo.sisa || 0);
+        const masaBulan = Number(quotaInfo.masa_kerja_bulan || 0);
+
+        if (cutiOption) {
+            if (kuotaMax === 0) {
+                cutiOption.disabled = true;
+                cutiOption.textContent = `Cuti Tahunan (belum memenuhi masa kerja minimum)`;
+                tipeSelect.value = 'IZIN';
+            } else if (sisa === 0) {
+                cutiOption.disabled = true;
+                cutiOption.textContent = `Cuti Tahunan (kuota habis)`;
+                tipeSelect.value = 'IZIN';
+            } else {
+                cutiOption.disabled = false;
+                cutiOption.textContent = `Cuti Tahunan (sisa ${sisa}/${kuotaMax} hari)`;
+                tipeSelect.value = 'CUTI';
+            }
+        }
+
+        // Tampilkan banner info di atas form
+        let bannerHtml = '';
+        if (kuotaMax === 0) {
+            bannerHtml = `<div style="background:#fef3c7; padding:10px 12px; border-radius:8px; margin-bottom:12px; border-left:3px solid #f59e0b; font-size:12px; color:#92400e;">
+                <i class="fas fa-info-circle"></i> <b>Cuti tahunan belum tersedia.</b> Masa kerja Anda baru ${masaBulan} bulan, minimum ${(quotaInfo.masa_kerja_min || 12)} bulan untuk mulai dapat kuota cuti. Anda tetap bisa mengajukan <b>Izin</b>.
+            </div>`;
+        }
+        const existing = document.getElementById('ci-banner-info');
+        if (existing) existing.remove();
+        if (bannerHtml) {
+            const form = document.querySelector('#ci-modal form');
+            if (form) {
+                const banner = document.createElement('div');
+                banner.id = 'ci-banner-info';
+                banner.innerHTML = bannerHtml;
+                form.insertBefore(banner.firstChild, form.firstChild);
+            }
+        }
+
         document.getElementById('ci-mulai').value = '';
         document.getElementById('ci-selesai').value = '';
         document.getElementById('ci-alasan').value = '';
@@ -145,9 +188,24 @@ const cutiIzin = {
         try {
             const res = await api.post({ action: 'getLeaveQuota', userId: user.id, tahun: tahun });
             if (res && res.success) {
+                this._lastQuota = res; // cache untuk dipakai openForm
                 document.getElementById('ci-quota-sisa').textContent = res.sisa;
                 document.getElementById('ci-quota-total').textContent = res.kuota;
                 document.getElementById('ci-quota-terpakai').textContent = res.terpakai;
+                // Tampilkan masa kerja jika ada
+                const card = document.getElementById('ci-quota-card');
+                const existing = card && card.querySelector('.ci-masa-kerja');
+                if (existing) existing.remove();
+                if (card && res.masa_kerja_bulan !== undefined) {
+                    const masaBulan = Number(res.masa_kerja_bulan);
+                    const tahunMK = Math.floor(masaBulan / 12);
+                    const bulanMK = masaBulan % 12;
+                    const span = document.createElement('div');
+                    span.className = 'ci-masa-kerja';
+                    span.style.cssText = 'font-size:11px; opacity:0.85; margin-top:2px;';
+                    span.textContent = `Masa kerja: ${tahunMK > 0 ? tahunMK + ' thn ' : ''}${bulanMK} bln`;
+                    card.firstElementChild.appendChild(span);
+                }
             }
         } catch (err) { /* silent */ }
     },
