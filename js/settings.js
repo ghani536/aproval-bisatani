@@ -29,24 +29,46 @@ const settings = {
         });
     },
 
+    _normKey(k) {
+        return String(k || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    },
+
     async loadSettings() {
         try {
             const res = await api.post({ action: 'getSettings' });
             if (res && res.success) {
-                this.data = res.data || {};
+                const raw = res.data || {};
+                // Build dual map: original keys + normalized form
+                // (GAS sudah normalize key, tapi defensive untuk variasi naming)
+                this.data = {};
+                Object.keys(raw).forEach(k => {
+                    this.data[k] = raw[k];
+                    const norm = this._normKey(k);
+                    if (norm && norm !== k) this.data[norm] = raw[k];
+                });
+                console.log('[Settings] Loaded ' + Object.keys(raw).length + ' keys:', Object.keys(raw).sort());
+                console.log('[Settings] Sample lookups:', {
+                    hari_kerja: this.data['harikerjaperbulan'],
+                    jam_kerja: this.data['jamkerjaperhari'],
+                    kuota_standar: this.data['kuotacutistandar'],
+                    nama_perusahaan: this.data['namaperusahaan']
+                });
                 this.fillForm();
+            } else {
+                console.error('[Settings] getSettings failed:', res);
             }
         } catch (e) {
-            console.error("Koneksi gagal:", e);
+            console.error("[Settings] Koneksi gagal:", e);
         }
     },
 
     _get(key, fallback) {
-        // getSettingsData di GAS membersihkan key (lowercase, strip _). Coba beberapa varian.
-        const v = this.data[key]
-            || this.data[key.replace(/_/g, '')]
-            || this.data[key.toLowerCase()]
-            || this.data[key.toLowerCase().replace(/_/g, '')];
+        // Coba raw key, lalu normalized (GAS strip non-alphanumeric + lowercase)
+        if (this.data[key] !== undefined && this.data[key] !== null && this.data[key] !== '') {
+            return this.data[key];
+        }
+        const norm = this._normKey(key);
+        const v = this.data[norm];
         return (v !== undefined && v !== null && v !== '') ? v : fallback;
     },
 
