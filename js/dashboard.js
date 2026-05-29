@@ -58,13 +58,15 @@ const dashboard = {
         const tahunSekarang = today.getFullYear();
 
         try {
-            const [resAtt, resPengajuan, resQuota, resQuotes, resDetail, resCfg] = await Promise.all([
+            const [resAtt, resPengajuan, resQuota, resQuotes, resDetail, resCfg, resPengumuman, resPerf] = await Promise.all([
                 api.post({ action: 'getAllAttendanceData' }),
                 api.post({ action: 'getMyPengajuan', userId: user.id }),
                 api.post({ action: 'getLeaveQuota', userId: user.id, tahun: tahun }),
                 api.post({ action: 'getMyQuotes', userId: user.id, bulan: bulanSekarang, tahun: tahunSekarang }),
                 api.post({ action: 'getEmployeeDetail', userId: user.id, limitMonths: 3 }),
-                api.post({ action: 'getSettings' })
+                api.post({ action: 'getSettings' }),
+                api.post({ action: 'getPengumumanAktif' }),
+                api.post({ action: 'getPerformanceReviews', userId: user.id })
             ]);
             const cfg = (resCfg && resCfg.success) ? (resCfg.data || {}) : {};
             const startDay = parseInt(cfg.periode_start_day || cfg.periodestartday || 26);
@@ -83,7 +85,10 @@ const dashboard = {
             const quota = (resQuota && resQuota.success) ? resQuota : { kuota: 7, terpakai: 0, sisa: 7, tahun: tahun };
             const myQuotes = (resQuotes && resQuotes.success) ? (resQuotes.data || []) : [];
             const riwayatGaji = (resDetail && resDetail.success) ? (resDetail.riwayat_gaji || []) : [];
+            const pengumuman = (resPengumuman && resPengumuman.success) ? (resPengumuman.data || []) : [];
+            const perfReviews = (resPerf && resPerf.success) ? (resPerf.data || []) : [];
 
+            this._renderPengumumanBanner(pengumuman);
             this._renderStatusToday(myAttendance, today);
             this._renderKuota(quota);
             this._renderStatsPeriode(myAttendance, startPeriod, endPeriod);
@@ -92,6 +97,7 @@ const dashboard = {
             this._renderPengajuanRecent(myPengajuan);
             this._renderChartTrend(myAttendance, today);
             this._renderRiwayatGaji(riwayatGaji);
+            this._renderPerformance(perfReviews);
             this._renderTips(quota);
 
         } catch (e) {
@@ -341,6 +347,82 @@ const dashboard = {
                 <div style="font-size:14px; font-weight:700; color:#166534;">${this._fmtRp(r.total_gaji)}</div>
             </div>
         `).join('');
+    },
+
+    _renderPengumumanBanner(items) {
+        const wrap = document.getElementById('emp-pengumuman-banner');
+        if (!wrap) return;
+        if (!items || items.length === 0) {
+            wrap.style.display = 'none';
+            wrap.innerHTML = '';
+            return;
+        }
+        const prioStyle = {
+            'tinggi': { bg: 'linear-gradient(135deg,#fee2e2,#fecaca)', border: '#ef4444', color: '#991b1b', icon: 'fa-exclamation-circle' },
+            'sedang': { bg: 'linear-gradient(135deg,#fef3c7,#fde68a)', border: '#f59e0b', color: '#92400e', icon: 'fa-exclamation-triangle' },
+            'normal': { bg: 'linear-gradient(135deg,#dbeafe,#bfdbfe)', border: '#3b82f6', color: '#1e40af', icon: 'fa-bullhorn' },
+            'rendah': { bg: '#f8fafc', border: '#94a3b8', color: '#475569', icon: 'fa-info-circle' }
+        };
+        wrap.style.display = 'block';
+        wrap.innerHTML = items.slice(0, 3).map(p => {
+            const ps = prioStyle[p.prioritas] || prioStyle.normal;
+            return `<div style="background:${ps.bg}; border-left:4px solid ${ps.border}; padding:12px 14px; border-radius:10px; margin-bottom:8px; color:${ps.color};">
+                <div style="display:flex; align-items:flex-start; gap:10px;">
+                    <i class="fas ${ps.icon}" style="font-size:18px; margin-top:2px;"></i>
+                    <div style="flex:1;">
+                        <div style="font-weight:700; font-size:13px;">${this._esc(p.judul)}</div>
+                        <div style="font-size:12px; margin-top:2px; white-space:pre-wrap;">${this._esc(p.isi)}</div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    },
+
+    _renderPerformance(reviews) {
+        const card = document.getElementById('emp-perf-card');
+        const content = document.getElementById('emp-perf-content');
+        if (!card || !content) return;
+        if (!reviews || reviews.length === 0) {
+            card.style.display = 'none';
+            return;
+        }
+        card.style.display = 'block';
+        const latest = reviews[0];
+        const scoreColor = (s) => {
+            const n = Number(s) || 0;
+            if (n >= 4) return '#10b981';
+            if (n >= 3) return '#3b82f6';
+            if (n >= 2) return '#f59e0b';
+            return '#ef4444';
+        };
+        const stars = (s) => {
+            const n = Math.round(Number(s) || 0);
+            return '★'.repeat(n) + '☆'.repeat(5 - n);
+        };
+        const categories = [
+            { key: 'kehadiran', label: 'Kehadiran', icon: 'fa-clock' },
+            { key: 'produktivitas', label: 'Produktivitas', icon: 'fa-tasks' },
+            { key: 'attitude', label: 'Attitude', icon: 'fa-smile' },
+            { key: 'kpi', label: 'KPI', icon: 'fa-bullseye' }
+        ];
+        content.innerHTML = `
+            <div style="background:linear-gradient(135deg,#ede9fe,#ddd6fe); padding:12px; border-radius:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:11px; color:#5b21b6; font-weight:600;">Q${latest.quarter} ${latest.tahun} (terbaru)</div>
+                    <div style="font-size:22px; font-weight:800; color:${scoreColor(latest.total)};">${Number(latest.total).toFixed(2)}<small style="font-size:13px; color:#5b21b6;">/5</small></div>
+                    <div style="font-size:16px; color:#fbbf24; letter-spacing:3px;">${stars(latest.total)}</div>
+                </div>
+                <div style="text-align:right; font-size:10px; color:#5b21b6;">${reviews.length} review${reviews.length > 1 ? 's' : ''}</div>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px;">
+                ${categories.map(cat => `<div style="background:#f8fafc; padding:6px 4px; border-radius:6px; text-align:center;">
+                    <i class="fas ${cat.icon}" style="color:#7c3aed; font-size:12px;"></i>
+                    <div style="font-size:9px; color:#64748b; margin-top:2px;">${cat.label}</div>
+                    <div style="font-size:13px; font-weight:700; color:${scoreColor(latest[cat.key])};">${latest[cat.key]}/5</div>
+                </div>`).join('')}
+            </div>
+            ${latest.catatan ? `<div style="background:#fffbeb; padding:8px 10px; border-radius:6px; border-left:3px solid #f59e0b; font-size:12px; color:#475569;"><b>Catatan dari admin:</b> ${this._esc(latest.catatan)}</div>` : ''}
+        `;
     },
 
     _renderTips(quota) {

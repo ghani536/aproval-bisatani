@@ -44,12 +44,15 @@ const adminDashboard = {
             if (dateLabel) dateLabel.textContent = `${namaHari[today.getDay()]}, ${today.getDate()} ${namaBulan[today.getMonth()]} ${today.getFullYear()}`;
 
             // Ambil settings dulu untuk dapat periode_start_day
-            const [resEmp, resAtt, resCfg, resPengajuan, resHolidays] = await Promise.all([
+            const anomStart = new Date(today.getTime() - 30 * 86400000).toISOString().slice(0, 10);
+            const anomEnd = today.toISOString().slice(0, 10);
+            const [resEmp, resAtt, resCfg, resPengajuan, resHolidays, resAnomali] = await Promise.all([
                 api.post({ action: 'getEmployees' }),
                 api.post({ action: 'getAllAttendanceData' }),
                 api.post({ action: 'getSettings' }),
                 api.post({ action: 'getAllPengajuan' }),
-                api.post({ action: 'getHolidays', tahun: String(today.getFullYear()) })
+                api.post({ action: 'getHolidays', tahun: String(today.getFullYear()) }),
+                api.post({ action: 'getAnomaliReport', start: anomStart, end: anomEnd })
             ]);
             const cfgEarly = (resCfg && resCfg.success) ? (resCfg.data || {}) : {};
             const startDay = parseInt(cfgEarly.periode_start_day || cfgEarly.periodestartday || 26);
@@ -92,6 +95,7 @@ const adminDashboard = {
             this._renderChartTrend(attendance, today);
             this._renderChartLembur(employees, attendance, startPeriod, endPeriod);
             this._renderLeaderboards(employees, attendance, config, startPeriod, endPeriod);
+            this._renderAnomali(resAnomali);
             this._renderAlerts(employees, pengajuan, sentMap, today);
 
         } catch (e) {
@@ -515,6 +519,42 @@ const adminDashboard = {
 
         document.getElementById('dash-top-disiplin').innerHTML = renderList(disiplin, '#10b981', '#f0fdf4', 'Belum ada data hadir di periode ini', false);
         document.getElementById('dash-top-telat').innerHTML = renderList(telat, '#ef4444', '#fef2f2', 'Belum ada keterlambatan 🎉', true);
+    },
+
+    _renderAnomali(resAnomali) {
+        const wrap = document.getElementById('dash-anomali');
+        const countEl = document.getElementById('dash-anomali-count');
+        if (!wrap) return;
+        if (!resAnomali || !resAnomali.success) {
+            wrap.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:20px; font-size:13px;">Tidak ada data anomali</div>';
+            if (countEl) { countEl.textContent = '0'; countEl.style.background = '#dcfce7'; countEl.style.color = '#166534'; }
+            return;
+        }
+        const list = resAnomali.data || [];
+        if (countEl) {
+            countEl.textContent = list.length;
+            if (list.length === 0) { countEl.style.background = '#dcfce7'; countEl.style.color = '#166534'; }
+            else { countEl.style.background = '#fee2e2'; countEl.style.color = '#dc2626'; }
+        }
+        if (list.length === 0) {
+            wrap.innerHTML = '<div style="text-align:center; color:#10b981; padding:20px; font-size:13px;"><i class="fas fa-check-circle" style="font-size:20px; display:block; margin-bottom:4px;"></i>Tidak ada anomali terdeteksi 30 hari terakhir 👍</div>';
+            return;
+        }
+        const levelStyle = {
+            'critical': { bg: '#fee2e2', color: '#dc2626', icon: 'fa-exclamation-circle' },
+            'warning': { bg: '#fef3c7', color: '#92400e', icon: 'fa-exclamation-triangle' },
+            'info': { bg: '#dbeafe', color: '#1e40af', icon: 'fa-info-circle' }
+        };
+        wrap.innerHTML = list.slice(0, 10).map(a => {
+            const ls = levelStyle[a.level] || levelStyle.info;
+            return `<div style="display:flex; gap:10px; padding:10px 12px; background:${ls.bg}; border-left:3px solid ${ls.color}; border-radius:6px; margin-bottom:6px;">
+                <i class="fas ${ls.icon}" style="color:${ls.color}; font-size:18px; margin-top:2px;"></i>
+                <div style="flex:1; min-width:0;">
+                    <div style="font-size:12px; font-weight:700; color:${ls.color};">${this._esc(a.tipe)} · <span style="font-weight:400; color:#64748b;">${a.tanggal}</span></div>
+                    <div style="font-size:12px; color:#475569; margin-top:2px;">${this._esc(a.pesan)}</div>
+                </div>
+            </div>`;
+        }).join('') + (list.length > 10 ? `<div style="text-align:center; color:#94a3b8; font-size:11px; margin-top:6px;">+${list.length - 10} anomali lainnya</div>` : '');
     },
 
     _renderAlerts(employees, pengajuan, sentMap, today) {
