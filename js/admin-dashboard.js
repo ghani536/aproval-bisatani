@@ -75,9 +75,13 @@ const adminDashboard = {
                 resPayrollSent.data.forEach(s => { sentMap[String(s.userId)] = s; });
             }
 
-            // Cek hari libur / weekend hari ini
+            // Cek hari libur / weekend hari ini (today antara tanggal_mulai-selesai)
             const todayYMD = this._ymd(today);
-            const todayHoliday = holidays.find(h => h.tanggal === todayYMD);
+            const todayHoliday = holidays.find(h => {
+                const start = h.tanggal_mulai || h.tanggal;
+                const end = h.tanggal_selesai || start;
+                return start && todayYMD >= start && todayYMD <= end;
+            });
             const isWeekend = (today.getDay() === 0 || today.getDay() === 6);
             const isOffDay = !!todayHoliday || isWeekend;
 
@@ -206,8 +210,17 @@ const adminDashboard = {
         const banner = document.createElement('div');
         banner.id = 'dash-holiday-banner';
         banner.style.cssText = 'background:linear-gradient(135deg,#fef3c7,#fde68a); color:#92400e; padding:12px 16px; border-radius:10px; margin-bottom:16px; display:flex; align-items:center; gap:10px; border-left:4px solid #f59e0b;';
+        let holidayLabel = '';
+        if (todayHoliday) {
+            const mulai = todayHoliday.tanggal_mulai || todayHoliday.tanggal;
+            const selesai = todayHoliday.tanggal_selesai || mulai;
+            const hari = todayHoliday.jumlah_hari || 1;
+            holidayLabel = hari > 1
+                ? `<small style="opacity:0.8;">Periode: ${mulai} → ${selesai} (${hari} hari) · Karyawan tidak wajib absen</small>`
+                : `<small style="opacity:0.8;">Karyawan tidak wajib absen hari ini</small>`;
+        }
         banner.innerHTML = todayHoliday
-            ? `<i class="fas fa-calendar-day" style="font-size:20px;"></i><div><b>Hari ini libur:</b> ${this._esc(todayHoliday.nama_libur)}<br><small style="opacity:0.8;">Karyawan tidak wajib absen hari ini</small></div>`
+            ? `<i class="fas fa-calendar-day" style="font-size:20px;"></i><div><b>Hari ini libur:</b> ${this._esc(todayHoliday.nama_libur)}<br>${holidayLabel}</div>`
             : `<i class="fas fa-couch" style="font-size:20px;"></i><div><b>Weekend</b><br><small style="opacity:0.8;">Karyawan tidak wajib absen hari ini</small></div>`;
         parent.parentNode.insertBefore(banner, parent.nextSibling);
     },

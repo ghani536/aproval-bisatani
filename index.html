@@ -928,15 +928,23 @@
 
                     <!-- Modal Holiday Form -->
                     <div id="modal-holiday" class="modal-custom" style="display:none;">
-                        <div class="modal-content" style="background:white; padding:24px; border-radius:12px; width:92%; max-width:420px;">
+                        <div class="modal-content" style="background:white; padding:24px; border-radius:12px; width:92%; max-width:460px;">
                             <h4 style="margin:0 0 14px;"><i class="fas fa-calendar-day" style="color:#f59e0b;"></i> Tambah Hari Libur</h4>
-                            <div style="margin-bottom:12px;">
-                                <label style="font-size:11px; font-weight:700; color:#64748b;">TANGGAL</label>
-                                <input type="date" id="lib-tanggal" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
+                                <div>
+                                    <label style="font-size:11px; font-weight:700; color:#64748b;">TANGGAL MULAI</label>
+                                    <input type="date" id="lib-tanggal-mulai" oninput="settings.updateHolidayPreview()" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size:11px; font-weight:700; color:#64748b;">TANGGAL SELESAI</label>
+                                    <input type="date" id="lib-tanggal-selesai" oninput="settings.updateHolidayPreview()" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                </div>
                             </div>
+                            <div id="lib-preview" style="background:#fef3c7; padding:8px 12px; border-radius:6px; margin-bottom:12px; font-size:12px; color:#92400e;">Pilih tanggal untuk lihat jumlah hari libur</div>
                             <div style="margin-bottom:14px;">
                                 <label style="font-size:11px; font-weight:700; color:#64748b;">NAMA LIBUR</label>
-                                <input type="text" id="lib-nama" placeholder="Mis. Hari Raya Nyepi" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                <input type="text" id="lib-nama" placeholder="Mis. Hari Raya Idul Fitri 1446 H" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                <small style="color:#94a3b8; font-size:11px;">Tip: untuk libur 1 hari, biarkan tanggal selesai = tanggal mulai (atau kosongkan)</small>
                             </div>
                             <div style="display:flex; gap:8px;">
                                 <button onclick="document.getElementById('modal-holiday').style.display='none'" style="flex:1; background:#e2e8f0; color:#475569; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;">Batal</button>
@@ -1075,6 +1083,11 @@
                     <div class="form-group" style="grid-column: span 2;">
                         <label style="font-size: 11px; font-weight: 700; color: #64748b;">EMAIL / USERNAME</label>
                         <input type="text" id="emp-email" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; color: #0891b2;">TANGGAL BERGABUNG</label>
+                        <input type="date" id="emp-join-date" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <small id="emp-join-info" style="display:block; margin-top:4px; color:#94a3b8; font-size:10px;">Default: hari ini. Penting untuk hitung kuota cuti & masa kerja.</small>
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
                         <label style="font-size: 11px; font-weight: 700; color: #ef4444;">PASSWORD LOGIN</label>

@@ -167,6 +167,10 @@ const adminEmployees = {
                 const kostEl = document.getElementById('emp-tunjangan-kost');
                 if (bensinEl) bensinEl.value = 0;
                 if (kostEl) kostEl.value = 0;
+                const joinEl = document.getElementById('emp-join-date');
+                const joinInfo = document.getElementById('emp-join-info');
+                if (joinEl) joinEl.value = new Date().toISOString().slice(0, 10);
+                if (joinInfo) joinInfo.textContent = 'Default: hari ini. Ubah jika karyawan sudah bekerja sebelumnya.';
                 document.getElementById('modal-employee').style.display = 'flex';
             };
         }
@@ -206,7 +210,8 @@ const adminEmployees = {
                 nama_bank: (document.getElementById('emp-bank') || {}).value || "",
                 no_rekening: (document.getElementById('emp-rekening') || {}).value || "",
                 tunjangan_bensin: (document.getElementById('emp-tunjangan-bensin') || {}).value || "0",
-                tunjangan_kost: (document.getElementById('emp-tunjangan-kost') || {}).value || "0"
+                tunjangan_kost: (document.getElementById('emp-tunjangan-kost') || {}).value || "0",
+                joinDate: (document.getElementById('emp-join-date') || {}).value || ""
             };
             // Password: hanya kirim kalau diisi (kosong = backend pakai password lama)
             if (pwdEl && pwdEl.value.trim() !== "") {
@@ -277,6 +282,29 @@ const adminEmployees = {
         const kostEl = document.getElementById('emp-tunjangan-kost');
         if (bensinEl) bensinEl.value = emp.tunjangan_bensin || 0;
         if (kostEl) kostEl.value = emp.tunjangan_kost || 0;
+
+        // Join date
+        const joinEl = document.getElementById('emp-join-date');
+        const joinInfo = document.getElementById('emp-join-info');
+        if (joinEl) {
+            if (emp.joinDate) {
+                const jd = new Date(emp.joinDate);
+                if (!isNaN(jd)) {
+                    joinEl.value = jd.toISOString().slice(0, 10);
+                    // Hitung masa kerja
+                    const now = new Date();
+                    let months = (now.getFullYear() - jd.getFullYear()) * 12 + (now.getMonth() - jd.getMonth());
+                    if (now.getDate() < jd.getDate()) months--;
+                    months = Math.max(0, months);
+                    const tahun = Math.floor(months / 12);
+                    const bulan = months % 12;
+                    if (joinInfo) joinInfo.textContent = `Masa kerja: ${tahun > 0 ? tahun + ' thn ' : ''}${bulan} bln`;
+                }
+            } else {
+                joinEl.value = '';
+                if (joinInfo) joinInfo.textContent = 'Default: hari ini. Penting untuk hitung kuota cuti & masa kerja.';
+            }
+        }
 
         document.getElementById('modal-employee').style.display = 'flex';
     },

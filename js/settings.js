@@ -230,6 +230,15 @@ const settings = {
         }
     },
 
+    _fmtTglID(ymd) {
+        // YYYY-MM-DD → "5 Apr 2026"
+        if (!ymd) return '';
+        const namaBulan = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const m = String(ymd).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!m) return ymd;
+        return `${parseInt(m[3])} ${namaBulan[parseInt(m[2])]} ${m[1]}`;
+    },
+
     renderHolidays() {
         const wrap = document.getElementById('libur-list');
         if (!wrap) return;
@@ -239,15 +248,29 @@ const settings = {
         }
         const namaHari = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
         wrap.innerHTML = this.holidays.map(h => {
-            const d = new Date(h.tanggal + 'T00:00:00');
-            const isPast = d < new Date(new Date().setHours(0, 0, 0, 0));
-            const dayName = namaHari[d.getDay()];
-            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:${isPast ? '#f8fafc' : '#fffbeb'}; border-radius:8px; margin-bottom:6px; ${isPast ? 'opacity:0.7;' : ''}">
+            const tglMulai = h.tanggal_mulai;
+            const tglSelesai = h.tanggal_selesai || tglMulai;
+            const hari = h.jumlah_hari || 1;
+            const dM = new Date(tglMulai + 'T00:00:00');
+            const dS = new Date(tglSelesai + 'T00:00:00');
+            const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+            const isPast = dS < today0;
+            const isActive = today0 >= dM && today0 <= dS;
+            const dayMulai = namaHari[dM.getDay()];
+            const dayLabel = (hari === 1)
+                ? `${dayMulai}, ${dM.getDate()}`
+                : `${dM.getDate()}–${dS.getDate()}`;
+            const periodLabel = (hari === 1)
+                ? this._fmtTglID(tglMulai)
+                : `${this._fmtTglID(tglMulai)} → ${this._fmtTglID(tglSelesai)}`;
+            const bg = isActive ? '#fef3c7' : (isPast ? '#f8fafc' : '#fffbeb');
+            const badgeBg = isActive ? '#10b981' : (isPast ? '#cbd5e1' : '#f59e0b');
+            return `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:${bg}; border-radius:8px; margin-bottom:6px; ${isPast ? 'opacity:0.7;' : ''} ${isActive ? 'border:2px solid #10b981;' : ''}">
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="background:${isPast ? '#cbd5e1' : '#f59e0b'}; color:white; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700;">${dayName}, ${d.getDate()}</div>
+                    <div style="background:${badgeBg}; color:white; padding:4px 10px; border-radius:6px; font-size:11px; font-weight:700; min-width:60px; text-align:center;">${dayLabel}</div>
                     <div>
-                        <div style="font-size:13px; font-weight:600; color:#1e293b;">${String(h.nama_libur).replace(/</g, '&lt;')}</div>
-                        <div style="font-size:11px; color:#64748b;">${h.tanggal}</div>
+                        <div style="font-size:13px; font-weight:600; color:#1e293b;">${String(h.nama_libur).replace(/</g, '&lt;')} ${isActive ? '<span style="background:#10b981; color:white; padding:1px 8px; border-radius:8px; font-size:10px;">SEKARANG</span>' : ''}</div>
+                        <div style="font-size:11px; color:#64748b;">${periodLabel} · <b>${hari} hari</b></div>
                     </div>
                 </div>
                 <button onclick="settings.deleteHoliday(${h.id})" style="background:#fee2e2; color:#dc2626; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:600;"><i class="fas fa-trash"></i></button>
@@ -257,30 +280,61 @@ const settings = {
 
     openHolidayForm() {
         this._holidayEditId = null;
-        document.getElementById('lib-tanggal').value = '';
+        document.getElementById('lib-tanggal-mulai').value = '';
+        document.getElementById('lib-tanggal-selesai').value = '';
         document.getElementById('lib-nama').value = '';
+        this.updateHolidayPreview();
         document.getElementById('modal-holiday').style.display = 'flex';
     },
 
+    updateHolidayPreview() {
+        const m = document.getElementById('lib-tanggal-mulai').value;
+        const s = document.getElementById('lib-tanggal-selesai').value;
+        const out = document.getElementById('lib-preview');
+        if (!out) return;
+        if (!m) {
+            out.textContent = 'Pilih tanggal untuk lihat jumlah hari libur';
+            out.style.background = '#fef3c7';
+            out.style.color = '#92400e';
+            return;
+        }
+        const eff = s || m;
+        const d1 = new Date(m), d2 = new Date(eff);
+        if (d2 < d1) {
+            out.textContent = '⚠️ Tanggal selesai harus setelah/sama dengan tanggal mulai';
+            out.style.background = '#fee2e2';
+            out.style.color = '#991b1b';
+            return;
+        }
+        const hari = Math.floor((d2 - d1) / 86400000) + 1;
+        out.innerHTML = `Total: <b>${hari}</b> hari libur (${this._fmtTglID(m)}${hari > 1 ? ' → ' + this._fmtTglID(eff) : ''})`;
+        out.style.background = '#dcfce7';
+        out.style.color = '#166534';
+    },
+
     async saveHoliday() {
-        const tgl = document.getElementById('lib-tanggal').value;
+        const tglMulai = document.getElementById('lib-tanggal-mulai').value;
+        const tglSelesai = document.getElementById('lib-tanggal-selesai').value || tglMulai;
         const nama = document.getElementById('lib-nama').value.trim();
-        if (!tgl || !nama) { alert('Tanggal & nama wajib diisi'); return; }
+        if (!tglMulai || !nama) { alert('Tanggal mulai & nama wajib diisi'); return; }
+        if (new Date(tglSelesai) < new Date(tglMulai)) {
+            alert('Tanggal selesai harus setelah/sama dengan tanggal mulai');
+            return;
+        }
         try {
             const user = auth.user || {};
             const res = await api.post({
                 action: 'saveHoliday',
-                tanggal: tgl,
+                tanggal_mulai: tglMulai,
+                tanggal_selesai: tglSelesai,
                 nama_libur: nama,
                 dibuat_oleh: user.name || user.nama || 'admin'
             });
             if (res && res.success) {
                 document.getElementById('modal-holiday').style.display = 'none';
-                // Jika tanggal di luar tahun filter saat ini, ganti filter
-                const tglYear = String(tgl).substring(0, 4);
+                const tglYear = String(tglMulai).substring(0, 4);
                 const filter = document.getElementById('libur-tahun-filter');
                 if (filter && filter.value !== tglYear) {
-                    // Tambah option kalau belum ada
                     if (![...filter.options].some(o => o.value === tglYear)) {
                         const opt = document.createElement('option');
                         opt.value = tglYear; opt.textContent = tglYear;
