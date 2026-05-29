@@ -8,12 +8,13 @@ const quoteVote = {
     myVotes: {},    // categoryId -> nomineeId
     period: '',
 
-    getCurrentPeriod() {
+    async getCurrentPeriod() {
         const today = new Date();
         const todayDate = today.getDate();
         let month = today.getMonth() + 1;
         let year = today.getFullYear();
-        if (todayDate >= 26) {
+        const startDay = await api.getPeriodStartDay();
+        if (todayDate >= startDay) {
             month += 1;
             if (month > 12) { month = 1; year++; }
         }
@@ -26,7 +27,7 @@ const quoteVote = {
         if (!wrap) return;
         wrap.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat nominee...</div>';
 
-        const { month, year } = this.getCurrentPeriod();
+        const { month, year } = await this.getCurrentPeriod();
         const userId = (auth.user && auth.user.id) ? auth.user.id : '';
 
         try {
@@ -154,7 +155,7 @@ const quoteVote = {
         const userId = (auth.user && auth.user.id) ? auth.user.id : '';
         if (!userId) return alert("Login dulu");
 
-        const { month, year } = this.getCurrentPeriod();
+        const { month, year } = await this.getCurrentPeriod();
 
         // Optimistic UI: update local state dulu
         const prev = this.myVotes[String(categoryId)];

@@ -388,7 +388,21 @@ const settings = {
             this._downloadCSV(`Backup_Pengajuan_${ts}.csv`, resPengajuan.data || []);
             this._downloadCSV(`Backup_PayrollSent_${ts}.csv`, (resPayroll && resPayroll.data) || []);
             this._downloadCSV(`Backup_Holidays_${ts}.csv`, resHol.data || []);
-            this._downloadCSV(`Backup_Settings_${ts}.csv`, Object.entries(this.data).map(([k, v]) => ({ key: k, value: v })));
+            // Backup Settings: pakai data ORIGINAL key dari API, bukan this.data yang sudah dual-key
+            // (loadSettings build dual-key map untuk lookup, tapi backup hanya butuh original)
+            const settingsForBackup = [];
+            const seenNorm = new Set();
+            // Re-fetch fresh untuk dapat key original
+            const freshRes = await api.post({ action: 'getSettings' });
+            if (freshRes && freshRes.success && freshRes.data) {
+                Object.entries(freshRes.data).forEach(([k, v]) => {
+                    if (!seenNorm.has(k)) {
+                        seenNorm.add(k);
+                        settingsForBackup.push({ key: k, value: v });
+                    }
+                });
+            }
+            this._downloadCSV(`Backup_Settings_${ts}.csv`, settingsForBackup);
             alert('✅ 6 file CSV ter-download. Cek folder Downloads.');
         } catch (e) {
             alert('❌ Backup gagal: ' + e.message);
