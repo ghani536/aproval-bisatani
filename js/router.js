@@ -125,6 +125,12 @@ const router = {
                 case 'admin-pengajuan':
                     if (window.adminPengajuan) adminPengajuan.init();
                     break;
+                case 'admin-pengumuman':
+                    if (window.adminPengumuman) adminPengumuman.init();
+                    break;
+                case 'admin-performance':
+                    if (window.adminPerformance) adminPerformance.init();
+                    break;
             }
         } catch (e) {
             console.error("Router: Gagal init halaman " + page, e);

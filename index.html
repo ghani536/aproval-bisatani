@@ -253,6 +253,8 @@
                         <li class="nav-item" data-page="employees"><a href="#" class="nav-link"><i class="fas fa-users"></i><span>Data Karyawan</span></a></li>
                         <li class="nav-item" data-page="approval"><a href="#" class="nav-link"><i class="fas fa-clipboard-check"></i><span>Approval</span><span id="approval-badge" style="display:none; background:#ef4444; color:white; border-radius:10px; padding:2px 8px; font-size:10px; font-weight:700; margin-left:auto;">0</span></a></li>
                         <li class="nav-item" data-page="admin-pengajuan"><a href="#" class="nav-link"><i class="fas fa-calendar-day"></i><span>Pengajuan</span><span id="pengajuan-badge" style="display:none; background:#ef4444; color:white; border-radius:10px; padding:2px 8px; font-size:10px; font-weight:700; margin-left:auto;">0</span></a></li>
+                        <li class="nav-item" data-page="admin-pengumuman"><a href="#" class="nav-link"><i class="fas fa-bullhorn"></i><span>Pengumuman</span></a></li>
+                        <li class="nav-item" data-page="admin-performance"><a href="#" class="nav-link"><i class="fas fa-star-half-alt"></i><span>Performance Review</span></a></li>
                     </ul>
                 </div>
                 <div class="nav-section">
@@ -284,6 +286,9 @@
 
             <div class="page-content" id="page-content">
                 <div class="page active" id="page-dashboard">
+                    <!-- Banner pengumuman aktif -->
+                    <div id="emp-pengumuman-banner" style="display:none; margin-bottom:14px;"></div>
+
                     <!-- Welcome banner gradient -->
                     <div id="emp-welcome-card" style="background:linear-gradient(135deg,#10b981,#059669); color:white; padding:18px 20px; border-radius:14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
                         <div style="flex:1; min-width:0;">
@@ -363,6 +368,12 @@
                     <div style="background:#fff; padding:14px 16px; border-radius:12px; margin-bottom:14px;">
                         <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; margin-bottom:8px;"><i class="fas fa-wallet" style="color:#166534;"></i> Slip Gaji Saya</div>
                         <div id="emp-riwayat-gaji"><div style="text-align:center; color:#94a3b8; padding:14px; font-size:13px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                    </div>
+
+                    <!-- Performance Saya -->
+                    <div id="emp-perf-card" style="display:none; background:#fff; padding:14px 16px; border-radius:12px; margin-bottom:14px;">
+                        <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; margin-bottom:8px;"><i class="fas fa-star" style="color:#7c3aed;"></i> Performance Saya</div>
+                        <div id="emp-perf-content"></div>
                     </div>
 
                     <!-- Tips card -->
@@ -617,6 +628,131 @@
                                 <button onclick="adminPengajuan.closeDecide()" style="flex:1; background:#e2e8f0; color:#475569; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;">Batal</button>
                                 <button id="ap-decide-confirm" onclick="adminPengajuan.confirmDecide()" style="flex:2; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;">Konfirmasi</button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page Admin Pengumuman -->
+                <div class="page" id="page-admin-pengumuman">
+                    <div style="padding:20px; background:#fff; border-radius:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fas fa-bullhorn" style="color:#f59e0b;"></i> Pengumuman</h3>
+                                <p style="color:#64748b; font-size:13px; margin:4px 0 0;">Banner pengumuman tampil di dashboard karyawan saat aktif</p>
+                            </div>
+                            <button onclick="adminPengumuman.openForm()" style="background:#10b981; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600;"><i class="fas fa-plus"></i> Pengumuman Baru</button>
+                        </div>
+                        <div id="pengumuman-list"><div style="text-align:center; color:#94a3b8; padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                    </div>
+
+                    <!-- Modal form -->
+                    <div id="modal-pengumuman" class="modal-custom" style="display:none;">
+                        <div class="modal-content" style="background:white; padding:24px; border-radius:12px; width:92%; max-width:520px; max-height:90vh; overflow-y:auto;">
+                            <h4 id="pgm-modal-title" style="margin:0 0 14px;"><i class="fas fa-bullhorn" style="color:#f59e0b;"></i> Pengumuman Baru</h4>
+                            <div style="margin-bottom:12px;">
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">JUDUL</label>
+                                <input type="text" id="pgm-judul" placeholder="Mis. Kantor tutup Senin depan" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                            </div>
+                            <div style="margin-bottom:12px;">
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">ISI PENGUMUMAN</label>
+                                <textarea id="pgm-isi" rows="4" placeholder="Detail pengumuman..." style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; resize:vertical; font-family:inherit; margin-top:4px;"></textarea>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+                                <div>
+                                    <label style="font-size:11px; font-weight:700; color:#64748b;">MULAI TAMPIL</label>
+                                    <input type="date" id="pgm-mulai" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                </div>
+                                <div>
+                                    <label style="font-size:11px; font-weight:700; color:#64748b;">EXPIRED</label>
+                                    <input type="date" id="pgm-expired" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                    <small style="color:#94a3b8; font-size:10px;">Kosongkan = tidak pernah expired</small>
+                                </div>
+                            </div>
+                            <div style="margin-bottom:14px;">
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">PRIORITAS</label>
+                                <select id="pgm-prioritas" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                    <option value="rendah">Rendah</option>
+                                    <option value="normal" selected>Normal</option>
+                                    <option value="sedang">Sedang</option>
+                                    <option value="tinggi">Tinggi (banner merah)</option>
+                                </select>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button onclick="document.getElementById('modal-pengumuman').style.display='none'" style="flex:1; background:#e2e8f0; color:#475569; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;">Batal</button>
+                                <button onclick="adminPengumuman.save()" style="flex:2; background:#10b981; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;"><i class="fas fa-save"></i> Simpan</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page Admin Performance Review -->
+                <div class="page" id="page-admin-performance">
+                    <div style="padding:20px; background:#fff; border-radius:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fas fa-star-half-alt" style="color:#7c3aed;"></i> Performance Review</h3>
+                                <p style="color:#64748b; font-size:13px; margin:4px 0 0;">Review kinerja karyawan per quarter (Kehadiran, Produktivitas, Attitude, KPI)</p>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <select id="perf-quarter-filter" onchange="adminPerformance.render()" style="padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
+                                    <option value="">Semua Quarter</option>
+                                    <option value="Q1">Q1 (Jan-Mar)</option>
+                                    <option value="Q2">Q2 (Apr-Jun)</option>
+                                    <option value="Q3">Q3 (Jul-Sep)</option>
+                                    <option value="Q4">Q4 (Okt-Des)</option>
+                                </select>
+                                <select id="perf-tahun-filter" onchange="adminPerformance.render()" style="padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;"></select>
+                            </div>
+                        </div>
+                        <div id="perf-list"><div style="text-align:center; color:#94a3b8; padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                    </div>
+
+                    <!-- Modal review form -->
+                    <div id="modal-perf" class="modal-custom" style="display:none;">
+                        <div class="modal-content" style="background:white; padding:24px; border-radius:12px; width:92%; max-width:520px; max-height:90vh; overflow-y:auto;">
+                            <h4 id="perf-modal-title" style="margin:0 0 14px;"><i class="fas fa-star" style="color:#7c3aed;"></i> Review Baru</h4>
+                            <div id="perf-form-emp-info" style="background:#f1f5f9; padding:10px 12px; border-radius:8px; margin-bottom:12px; font-size:13px; color:#475569;"></div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+                                <div>
+                                    <label style="font-size:11px; font-weight:700; color:#64748b;">QUARTER</label>
+                                    <select id="perf-quarter" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                        <option value="1">Q1 (Jan-Mar)</option>
+                                        <option value="2">Q2 (Apr-Jun)</option>
+                                        <option value="3">Q3 (Jul-Sep)</option>
+                                        <option value="4">Q4 (Okt-Des)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size:11px; font-weight:700; color:#64748b;">TAHUN</label>
+                                    <input type="number" id="perf-tahun" min="2020" max="2099" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:4px;">
+                                </div>
+                            </div>
+                            <div id="perf-scores-wrap">
+                                <!-- 4 score akan di-inject oleh JS -->
+                            </div>
+                            <div style="background:#f0fdf4; padding:10px 12px; border-radius:8px; margin-bottom:12px; text-align:center;">
+                                <div style="font-size:11px; color:#64748b; font-weight:700;">TOTAL SCORE</div>
+                                <div id="perf-total-preview" style="font-size:28px; font-weight:800; color:#166534;">—</div>
+                            </div>
+                            <div style="margin-bottom:14px;">
+                                <label style="font-size:11px; font-weight:700; color:#64748b;">CATATAN (opsional)</label>
+                                <textarea id="perf-catatan" rows="3" placeholder="Komentar untuk karyawan..." style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; resize:vertical; font-family:inherit; margin-top:4px;"></textarea>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button onclick="document.getElementById('modal-perf').style.display='none'" style="flex:1; background:#e2e8f0; color:#475569; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;">Batal</button>
+                                <button onclick="adminPerformance.save()" style="flex:2; background:#7c3aed; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; font-weight:600;"><i class="fas fa-save"></i> Simpan Review</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal history -->
+                    <div id="modal-perf-history" class="modal-custom" style="display:none;">
+                        <div class="modal-content" style="background:white; padding:24px; border-radius:12px; width:92%; max-width:640px; max-height:90vh; overflow-y:auto;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                                <h4 style="margin:0;"><i class="fas fa-history" style="color:#7c3aed;"></i> Riwayat Review</h4>
+                                <button onclick="document.getElementById('modal-perf-history').style.display='none'" style="background:#f1f5f9; border:none; width:34px; height:34px; border-radius:8px; cursor:pointer;"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div id="perf-history-content"></div>
                         </div>
                     </div>
                 </div>
@@ -1045,6 +1181,15 @@
                         </div>
                     </div>
 
+                    <!-- Anomali Terdeteksi -->
+                    <div style="background:#fff; padding:16px; border-radius:12px; margin-bottom:16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                            <h4 style="margin:0; font-size:14px; color:#1e293b;"><i class="fas fa-search" style="color:#ef4444;"></i> Anomali Terdeteksi <small style="color:#94a3b8; font-weight:400;">(30 hari terakhir)</small></h4>
+                            <span id="dash-anomali-count" style="background:#fee2e2; color:#dc2626; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700;">0</span>
+                        </div>
+                        <div id="dash-anomali"><div style="text-align:center; color:#94a3b8; padding:20px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                    </div>
+
                     <!-- Row 4: Smart Alerts -->
                     <div style="background:#fff; padding:16px; border-radius:12px;">
                         <h4 style="margin:0 0 10px; font-size:14px; color:#1e293b;"><i class="fas fa-bell" style="color:#f59e0b;"></i> Alerts &amp; Reminders</h4>
@@ -1205,6 +1350,8 @@
     <script src="js/admin-dashboard.js"></script>
     <script src="js/cuti-izin.js"></script>
     <script src="js/admin-pengajuan.js"></script>
+    <script src="js/admin-pengumuman.js"></script>
+    <script src="js/admin-performance.js"></script>
 
     <script>
         document.querySelectorAll('.nav-item-mobile[data-page]').forEach(item => {
