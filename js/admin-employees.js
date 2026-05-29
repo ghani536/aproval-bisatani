@@ -4,6 +4,7 @@
  */
 const adminEmployees = {
     employees: [],
+    showAdmin: false, // toggle: default hide admin dari tabel
 
     init() {
         console.log("AdminEmployees: Sistem Inisialisasi...");
@@ -82,17 +83,58 @@ const adminEmployees = {
         this.renderTable();
     },
 
+    toggleShowAdmin() {
+        this.showAdmin = !this.showAdmin;
+        this.renderTable();
+    },
+
+    _renderAdminToggle(adminCount) {
+        const existing = document.getElementById('emp-admin-toggle-bar');
+        const tbody = document.getElementById('employees-table-body');
+        if (!tbody) return;
+        const tableEl = tbody.closest('table');
+        if (!tableEl) return;
+        const tableContainer = tableEl.parentElement;
+        if (!tableContainer) return;
+        if (existing) existing.remove();
+        if (adminCount === 0) return;
+        const bar = document.createElement('div');
+        bar.id = 'emp-admin-toggle-bar';
+        bar.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#f1f5f9; border-radius:6px; margin-bottom:10px; font-size:12px;';
+        bar.innerHTML = `<span style="color:#64748b;">
+            <i class="fas fa-user-shield" style="color:#7c3aed;"></i>
+            ${this.showAdmin ? `Akun admin (${adminCount}) sedang ditampilkan` : `${adminCount} akun admin disembunyikan dari tabel`}
+        </span>
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:#475569; font-weight:600;">
+            <input type="checkbox" ${this.showAdmin ? 'checked' : ''} onchange="adminEmployees.toggleShowAdmin()" style="cursor:pointer;">
+            Tampilkan admin
+        </label>`;
+        tableContainer.insertBefore(bar, tableEl);
+    },
+
     renderTable() {
         const tbody = document.getElementById('employees-table-body');
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        if (this.employees.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px;">Belum ada data karyawan terpajang.</td></tr>';
+        // Filter admin kecuali toggle ON
+        const adminCount = this.employees.filter(e => String(e.role || '').toLowerCase() === 'admin').length;
+        const displayedEmployees = this.showAdmin
+            ? this.employees
+            : this.employees.filter(e => String(e.role || '').toLowerCase() !== 'admin');
+
+        // Inject toggle bar di atas tabel (cari container parent)
+        this._renderAdminToggle(adminCount);
+
+        if (displayedEmployees.length === 0) {
+            const msg = adminCount > 0 && !this.showAdmin
+                ? `Hanya ada akun admin (${adminCount}). Klik <b>"Tampilkan admin"</b> untuk lihat.`
+                : 'Belum ada data karyawan terpajang.';
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px;">${msg}</td></tr>`;
             return;
         }
 
-        const html = this.employees.map((emp, index) => {
+        const html = displayedEmployees.map((emp, index) => {
             const isPerJam = emp.jenis_gaji === 'per_jam';
             const gajiCell = isPerJam
                 ? `<span style="color:#6366f1; font-weight:600;">Rp ${Number(emp.tarif_per_jam || 0).toLocaleString('id-ID')}</span><br><small style="color:#94a3b8;">/jam</small>`
@@ -112,13 +154,15 @@ const adminEmployees = {
                 </div>
             `;
 
+            const isAdmin = String(emp.role || '').toLowerCase() === 'admin';
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9;">
+                <tr style="border-bottom: 1px solid #f1f5f9; ${isAdmin ? 'background:#faf5ff;' : ''}">
                     <td style="text-align:center; padding:12px;">${index + 1}</td>
                     <td style="padding:12px;">
-                        <a href="#" onclick="event.preventDefault(); adminEmployees.showDetail('${String(emp.id).replace(/'/g, "\\'")}')" style="color:#10b981; text-decoration:none; font-weight:600;" title="Klik untuk lihat detail">
+                        <a href="#" onclick="event.preventDefault(); adminEmployees.showDetail('${String(emp.id).replace(/'/g, "\\'")}')" style="color:${isAdmin ? '#7c3aed' : '#10b981'}; text-decoration:none; font-weight:600;" title="Klik untuk lihat detail">
                             ${emp.name} <i class="fas fa-info-circle" style="font-size:11px; opacity:0.6;"></i>
                         </a>
+                        ${isAdmin ? '<span style="background:#ede9fe; color:#5b21b6; padding:1px 6px; border-radius:8px; font-size:9px; font-weight:700; margin-left:4px;"><i class="fas fa-user-shield"></i> ADMIN</span>' : ''}
                         <br><small style="color:#64748b;">ID: ${emp.id}</small>
                     </td>
                     <td style="padding:12px;">${emp.email || '-'}</td>
