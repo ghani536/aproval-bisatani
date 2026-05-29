@@ -702,15 +702,98 @@
                 </div>
 
                 <div class="page" id="page-admin-dashboard">
-                    <div class="dashboard-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                        <div class="stat-card" style="background: #fff; padding: 20px; border-radius: 12px; border-left: 5px solid #6366f1;">
-                            <span style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Karyawan</span>
-                            <h2 id="dash-total-emp" style="margin: 10px 0 0; font-size: 28px;">0</h2>
+                    <!-- Welcome banner with date & refresh -->
+                    <div style="background:linear-gradient(135deg,#10b981,#059669); color:white; padding:18px 22px; border-radius:12px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <div>
+                            <h2 style="margin:0; font-size:20px;"><i class="fas fa-chart-line"></i> Dashboard Admin</h2>
+                            <p id="dash-date-label" style="margin:4px 0 0; font-size:13px; opacity:0.9;">—</p>
                         </div>
-                        <div class="stat-card" style="background: #fff; padding: 20px; border-radius: 12px; border-left: 5px solid #10b981;">
-                            <span style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Hadir Hari Ini</span>
-                            <h2 id="dash-total-presence" style="margin: 10px 0 0; font-size: 28px;">0</h2>
+                        <button onclick="adminDashboard.renderAll()" style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.4); padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:600;"><i class="fas fa-sync"></i> Refresh</button>
+                    </div>
+
+                    <!-- 6 Stat Cards -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px; margin-bottom:16px;">
+                        <div style="background:#fff; padding:16px; border-radius:12px; border-left:4px solid #6366f1;">
+                            <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;"><i class="fas fa-users" style="color:#6366f1;"></i> Total Karyawan</div>
+                            <h2 id="dash-total-emp" style="margin:8px 0 0; font-size:24px;">0</h2>
                         </div>
+                        <div style="background:#fff; padding:16px; border-radius:12px; border-left:4px solid #10b981;">
+                            <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;"><i class="fas fa-check-circle" style="color:#10b981;"></i> Hadir Hari Ini</div>
+                            <h2 id="dash-total-presence" style="margin:8px 0 0; font-size:24px;">0</h2>
+                            <small id="dash-presence-pct" style="color:#64748b; font-size:11px;">—</small>
+                        </div>
+                        <div style="background:#fff; padding:16px; border-radius:12px; border-left:4px solid #ef4444;">
+                            <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;"><i class="fas fa-user-slash" style="color:#ef4444;"></i> Belum Absen</div>
+                            <h2 id="dash-belum-absen" style="margin:8px 0 0; font-size:24px;">0</h2>
+                            <small style="color:#94a3b8; font-size:11px;">karyawan hari ini</small>
+                        </div>
+                        <div style="background:#fff; padding:16px; border-radius:12px; border-left:4px solid #f59e0b; cursor:pointer;" onclick="router.navigate('admin-pengajuan')">
+                            <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;"><i class="fas fa-calendar-day" style="color:#f59e0b;"></i> Pengajuan Pending</div>
+                            <h2 id="dash-pengajuan-pending" style="margin:8px 0 0; font-size:24px;">0</h2>
+                            <small style="color:#f59e0b; font-size:11px;">klik untuk approve →</small>
+                        </div>
+                        <div style="background:#fff; padding:16px; border-radius:12px; border-left:4px solid #2563eb;">
+                            <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;"><i class="fas fa-moon" style="color:#2563eb;"></i> Lembur Periode</div>
+                            <h2 id="dash-total-overtime" style="margin:8px 0 0; font-size:24px;">0 <small style="font-size:13px; color:#64748b;">jam</small></h2>
+                            <small style="color:#94a3b8; font-size:11px;">periode payroll berjalan</small>
+                        </div>
+                        <div style="background:#fff; padding:16px; border-radius:12px; border-left:4px solid #166534;">
+                            <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;"><i class="fas fa-wallet" style="color:#166534;"></i> Est. Payroll</div>
+                            <h2 id="dash-total-payroll" style="margin:8px 0 0; font-size:18px;">Rp 0</h2>
+                            <small style="color:#94a3b8; font-size:11px;">periode berjalan</small>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions Bar -->
+                    <div style="background:#fff; padding:12px 16px; border-radius:12px; margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <span style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; align-self:center;">Aksi Cepat:</span>
+                        <button onclick="router.navigate('approval')" style="background:#dcfce7; color:#166534; border:1px solid #bbf7d0; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;"><i class="fas fa-clipboard-check"></i> Approval Absen</button>
+                        <button onclick="router.navigate('admin-pengajuan')" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;"><i class="fas fa-calendar-day"></i> Pengajuan</button>
+                        <button onclick="router.navigate('payroll-reports')" style="background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;"><i class="fas fa-wallet"></i> Payroll</button>
+                        <button onclick="router.navigate('attendance-reports')" style="background:#e0e7ff; color:#3730a3; border:1px solid #c7d2fe; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;"><i class="fas fa-file-invoice"></i> Rekap Absensi</button>
+                        <button onclick="router.navigate('employees')" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;"><i class="fas fa-users"></i> Data Karyawan</button>
+                    </div>
+
+                    <!-- Row 1: Status Hari Ini + Aktivitas Terbaru -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px; margin-bottom:16px;">
+                        <div style="background:#fff; padding:16px; border-radius:12px;">
+                            <h4 style="margin:0 0 10px; font-size:14px; color:#1e293b;"><i class="fas fa-user-check" style="color:#10b981;"></i> Status Hari Ini</h4>
+                            <div id="dash-status-today"><div style="text-align:center; color:#94a3b8; padding:20px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                        </div>
+                        <div style="background:#fff; padding:16px; border-radius:12px;">
+                            <h4 style="margin:0 0 10px; font-size:14px; color:#1e293b;"><i class="fas fa-history" style="color:#3b82f6;"></i> Aktivitas Terbaru</h4>
+                            <div id="dash-recent-list"><div style="text-align:center; color:#94a3b8; padding:20px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Chart Tren Kehadiran + Distribusi Lembur -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px; margin-bottom:16px;">
+                        <div style="background:#fff; padding:16px; border-radius:12px;">
+                            <h4 style="margin:0 0 10px; font-size:14px; color:#1e293b;"><i class="fas fa-chart-bar" style="color:#10b981;"></i> Tren Kehadiran 7 Hari Terakhir</h4>
+                            <div style="position:relative; height:220px;"><canvas id="dash-chart-trend"></canvas></div>
+                        </div>
+                        <div style="background:#fff; padding:16px; border-radius:12px;">
+                            <h4 style="margin:0 0 10px; font-size:14px; color:#1e293b;"><i class="fas fa-moon" style="color:#2563eb;"></i> Distribusi Lembur Periode (Top 8)</h4>
+                            <div style="position:relative; height:220px;"><canvas id="dash-chart-lembur"></canvas></div>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Top Disiplin + Top Telat -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px; margin-bottom:16px;">
+                        <div style="background:#fff; padding:16px; border-radius:12px;">
+                            <h4 style="margin:0 0 10px; font-size:14px; color:#1e293b;"><i class="fas fa-trophy" style="color:#10b981;"></i> Top 3 Paling Disiplin <small style="color:#94a3b8; font-weight:400;">(periode berjalan)</small></h4>
+                            <div id="dash-top-disiplin"><div style="text-align:center; color:#94a3b8; padding:20px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                        </div>
+                        <div style="background:#fff; padding:16px; border-radius:12px;">
+                            <h4 style="margin:0 0 10px; font-size:14px; color:#1e293b;"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i> Top 3 Paling Banyak Telat <small style="color:#94a3b8; font-weight:400;">(periode berjalan)</small></h4>
+                            <div id="dash-top-telat"><div style="text-align:center; color:#94a3b8; padding:20px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                        </div>
+                    </div>
+
+                    <!-- Row 4: Smart Alerts -->
+                    <div style="background:#fff; padding:16px; border-radius:12px;">
+                        <h4 style="margin:0 0 10px; font-size:14px; color:#1e293b;"><i class="fas fa-bell" style="color:#f59e0b;"></i> Alerts &amp; Reminders</h4>
+                        <div id="dash-alerts"><div style="text-align:center; color:#94a3b8; padding:20px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
                     </div>
                 </div>
             </div>
@@ -843,6 +926,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="js/api.js"></script>
     <script src="js/main.js"></script>
     <script src="js/auth.js"></script>
