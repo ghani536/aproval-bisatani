@@ -59,10 +59,11 @@ const payroll = {
         const bensin = parseFloat(p.tunjBensinTerbayar || 0);
         const kost = parseFloat(p.tunjKost || 0);
         const potIzin = parseFloat(p.potonganIzin || 0);
+        const potPulCepat = parseFloat(p.potonganPulangCepat || 0);
         if (p.jenis_gaji === 'per_jam') {
             return p.basisGaji - p.bpjs + bonus + bensin + kost;
         }
-        return (p.gapok + p.bonusLembur + bonus + bensin + kost) - (p.bpjs + p.dendaTelat + potIzin);
+        return (p.gapok + p.bonusLembur + bonus + bensin + kost) - (p.bpjs + p.dendaTelat + potIzin + potPulCepat);
     },
 
     async calculate() {
@@ -147,6 +148,27 @@ const payroll = {
         return total;
     },
 
+    // Helper: hitung durasi kerja per hari (jam) untuk satu karyawan
+    hitungDurasiHarianMap(userLogs) {
+        const byDay = {};
+        userLogs.forEach(log => {
+            const isRejected = String(log.approvalStatus || '').toUpperCase() === 'REJECTED';
+            if (isRejected) return;
+            const t = new Date(log.timestamp);
+            const ymd = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+            if (!byDay[ymd]) byDay[ymd] = {};
+            if (log.type === 'MASUK') byDay[ymd].masuk = t;
+            if (log.type === 'PULANG') byDay[ymd].pulang = t;
+        });
+        const durasi = {};
+        Object.keys(byDay).forEach(ymd => {
+            const m = byDay[ymd].masuk, p = byDay[ymd].pulang;
+            if (m && p) durasi[ymd] = (p - m) / 3600000;
+            else if (m && !p) durasi[ymd] = null; // tidak ada PULANG → skip potongan
+        });
+        return durasi;
+    },
+
     calculateSingleEmployee(emp, start, end) {
         const userLogs = this.attendance.filter(a => {
             const tgl = new Date(a.timestamp);
@@ -157,10 +179,13 @@ const payroll = {
         const gajiPokok = parseFloat(emp.gaji_pokok || 0);
         const tarifPerJam = parseFloat(emp.tarif_per_jam || 0);
         const isPerJam = (emp.jenis_gaji === 'per_jam');
+        const hariKerjaPerBulan = parseInt(this.config.hari_kerja_per_bulan || 25);
+        const jamKerjaPerHari = parseFloat(this.config.jam_kerja_per_hari || 8);
+        const aktifkanPotongan = String(this.config.aktifkan_potongan_pulang_cepat || 'true') === 'true';
         let dendaPerMenit = parseFloat(emp.dendatelat || 0);
 
         if (dendaPerMenit <= 0 && gajiPokok > 0) {
-            dendaPerMenit = Math.round(gajiPokok / 25 / 8 / 60);
+            dendaPerMenit = Math.round(gajiPokok / hariKerjaPerBulan / jamKerjaPerHari / 60);
         }
 
         let hadirCount = 0;
@@ -190,32 +215,53 @@ const payroll = {
         const bonusLembur = Math.round(jamLemburTotal * tarifLembur);
         const nominalDenda = Math.round(totalMenitTelat * dendaPerMenit);
 
-        // Tunjangan: bensin proporsional (hari_hadir / 25), kost flat
+        // Tunjangan: bensin proporsional (hari_hadir / hari_kerja_per_bulan), kost flat
         const tunjBensinFull = parseFloat(emp.tunjangan_bensin || 0);
         const tunjKost = parseFloat(emp.tunjangan_kost || 0);
-        const hadirCapped = Math.min(hadirCount, 25);
-        const tunjBensinTerbayar = Math.round(tunjBensinFull * hadirCapped / 25);
+        const hadirCapped = Math.min(hadirCount, hariKerjaPerBulan);
+        const tunjBensinTerbayar = Math.round(tunjBensinFull * hadirCapped / hariKerjaPerBulan);
 
         // Hitung hari Cuti & Izin APPROVED dalam periode payroll
         const hariCuti = this.countHariPengajuan(emp.id, 'CUTI', start, end);
         const hariIzin = this.countHariPengajuan(emp.id, 'IZIN', start, end);
-        // Potongan izin (hanya untuk jenis gaji bulanan): gaji_pokok / 25 × hari_izin
-        const potonganIzin = isPerJam ? 0 : Math.round((gajiPokok / 25) * hariIzin);
+        const gajiHarian = hariKerjaPerBulan > 0 ? (gajiPokok / hariKerjaPerBulan) : 0;
+        // Potongan izin (hanya untuk jenis gaji bulanan): gaji_harian × hari_izin
+        const potonganIzin = isPerJam ? 0 : Math.round(gajiHarian * hariIzin);
+
+        // Potongan pulang cepat (proporsional, hanya bulanan)
+        let hariPulangCepat = 0;
+        let potonganPulangCepat = 0;
+        if (!isPerJam && aktifkanPotongan) {
+            const durasiByDay = this.hitungDurasiHarianMap(userLogs);
+            Object.keys(durasiByDay).forEach(ymd => {
+                const durasi = durasiByDay[ymd];
+                if (durasi == null) return; // tidak ada PULANG → skip
+                // Toleransi 5 menit (0.0833 jam) supaya tidak petty
+                if (durasi < jamKerjaPerHari - 0.0833) {
+                    const faktorKurang = Math.max(0, (jamKerjaPerHari - durasi) / jamKerjaPerHari);
+                    potonganPulangCepat += Math.round(gajiHarian * faktorKurang);
+                    hariPulangCepat++;
+                }
+            });
+        }
 
         let totalGaji;
         let basisGaji;
         let jamKerjaTotal = 0;
 
         if (isPerJam) {
-            // Per jam: total_jam = (hari_hadir × 8) + jam_lembur; gaji = total_jam × tarif_per_jam
-            // Cuti & Izin per jam → tidak dibayar (sudah natural: tidak masuk = tidak ada hari_hadir)
-            jamKerjaTotal = (hadirCount * 8) + jamLemburTotal;
+            // Per jam: total_jam = (hari_hadir × jam_kerja_per_hari) + jam_lembur
+            // Cuti & Izin per jam → tidak dibayar (natural: tidak masuk = tidak ada hari_hadir)
+            // Pulang cepat per jam → natural: jam aktual sudah benar via hadirCount × jam_kerja_per_hari,
+            // tapi sebenarnya yang lebih akurat = jumlah jam kerja aktual (perlu mod). Untuk konsisten
+            // dengan logic existing pakai hari_hadir × standar.
+            jamKerjaTotal = (hadirCount * jamKerjaPerHari) + jamLemburTotal;
             basisGaji = Math.round(jamKerjaTotal * tarifPerJam);
             totalGaji = basisGaji - bpjs + tunjBensinTerbayar + tunjKost;
         } else {
-            // Bulanan: Cuti tetap full (gaji_pokok flat), Izin dipotong proporsional
+            // Bulanan: Cuti tetap full, Izin dipotong proporsional, Pulang cepat dipotong proporsional
             basisGaji = gajiPokok;
-            totalGaji = (gajiPokok + bonusLembur + tunjBensinTerbayar + tunjKost) - (bpjs + nominalDenda + potonganIzin);
+            totalGaji = (gajiPokok + bonusLembur + tunjBensinTerbayar + tunjKost) - (bpjs + nominalDenda + potonganIzin + potonganPulangCepat);
         }
 
         return {
@@ -238,6 +284,8 @@ const payroll = {
             hariCuti: hariCuti,
             hariIzin: hariIzin,
             potonganIzin: potonganIzin,
+            hariPulangCepat: hariPulangCepat,
+            potonganPulangCepat: potonganPulangCepat,
             totalGaji: totalGaji
         };
     },
@@ -305,6 +353,9 @@ const payroll = {
                     ${Number(p.potonganIzin || 0) > 0
                         ? `<br><small style="color:#ef4444; font-weight:500; font-size:10px;">− izin Rp ${Number(p.potonganIzin).toLocaleString('id-ID')} (${p.hariIzin}h)</small>`
                         : ''}
+                    ${Number(p.potonganPulangCepat || 0) > 0
+                        ? `<br><small style="color:#ef4444; font-weight:500; font-size:10px;">− pulang cepat Rp ${Number(p.potonganPulangCepat).toLocaleString('id-ID')} (${p.hariPulangCepat}h)</small>`
+                        : ''}
                 </td>
                 <td style="text-align:center;">${aksiCell}</td>
             </tr>
@@ -349,6 +400,7 @@ const payroll = {
             'Menit Telat', 'Denda Telat', 'BPJS',
             'Bensin (full)', 'Bensin (terbayar)', 'Kost',
             'Hari Cuti', 'Hari Izin', 'Potongan Izin',
+            'Hari Pulang Cepat', 'Potongan Pulang Cepat',
             'Bonus', 'TOTAL GAJI', 'Status Kirim Email'
         ];
         const rows = this.calculatedData.map((p, i) => {
@@ -383,6 +435,8 @@ const payroll = {
                 Number(p.hariCuti || 0),
                 Number(p.hariIzin || 0),
                 Number(p.potonganIzin || 0),
+                Number(p.hariPulangCepat || 0),
+                Number(p.potonganPulangCepat || 0),
                 Number(p.bonusCustom || 0),
                 p.totalGaji,
                 statusKirim
@@ -399,19 +453,22 @@ const payroll = {
             acc.hariCuti += Number(p.hariCuti || 0);
             acc.hariIzin += Number(p.hariIzin || 0);
             acc.potonganIzin += Number(p.potonganIzin || 0);
+            acc.hariPulangCepat += Number(p.hariPulangCepat || 0);
+            acc.potonganPulangCepat += Number(p.potonganPulangCepat || 0);
             acc.bonusCustom += Number(p.bonusCustom || 0);
             acc.totalGaji += Number(p.totalGaji || 0);
             return acc;
-        }, { bonusLembur:0, dendaTelat:0, bpjs:0, tunjBensinTerbayar:0, tunjKost:0, hariCuti:0, hariIzin:0, potonganIzin:0, bonusCustom:0, totalGaji:0 });
+        }, { bonusLembur:0, dendaTelat:0, bpjs:0, tunjBensinTerbayar:0, tunjKost:0, hariCuti:0, hariIzin:0, potonganIzin:0, hariPulangCepat:0, potonganPulangCepat:0, bonusCustom:0, totalGaji:0 });
 
-        // Footer row: 25 kolom (sama dengan headers)
+        // Footer row: 27 kolom (sama dengan headers)
         const footer = [
             '', '', `TOTAL (${this.calculatedData.length} karyawan)`, '', '', '', '', // col 1-7
             '', '', '', '', '',                                                       // col 8-12
             totals.bonusLembur, '', totals.dendaTelat, totals.bpjs,                   // col 13-16
             '', totals.tunjBensinTerbayar, totals.tunjKost,                           // col 17-19
             totals.hariCuti, totals.hariIzin, totals.potonganIzin,                    // col 20-22
-            totals.bonusCustom, totals.totalGaji, ''                                  // col 23-25
+            totals.hariPulangCepat, totals.potonganPulangCepat,                       // col 23-24
+            totals.bonusCustom, totals.totalGaji, ''                                  // col 25-27
         ];
 
         // CSV content + UTF-8 BOM (supaya Excel buka tanpa garbled char)
@@ -506,6 +563,8 @@ const payroll = {
                     hariCuti: d.hariCuti || 0,
                     hariIzin: d.hariIzin || 0,
                     potonganIzin: d.potonganIzin || 0,
+                    hariPulangCepat: d.hariPulangCepat || 0,
+                    potonganPulangCepat: d.potonganPulangCepat || 0,
                     totalGaji: d.totalGaji
                 };
                 const res = await api.post(payload);
@@ -585,6 +644,8 @@ const payroll = {
                 hariCuti: data.hariCuti || 0,
                 hariIzin: data.hariIzin || 0,
                 potonganIzin: data.potonganIzin || 0,
+                hariPulangCepat: data.hariPulangCepat || 0,
+                potonganPulangCepat: data.potonganPulangCepat || 0,
                 totalGaji: data.totalGaji
             };
             const res = await api.post(payload);

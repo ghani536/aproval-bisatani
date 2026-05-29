@@ -70,6 +70,8 @@ const settings = {
         setVal('set-toleransi-telat', this._get('toleransi_telat_menit', 0));
         const cbOt = document.getElementById('set-ot-anytime');
         if (cbOt) cbOt.checked = String(this._get('allow_overtime_anytime', false)) === 'true';
+        const cbPC = document.getElementById('set-aktifkan-pulang-cepat');
+        if (cbPC) cbPC.checked = String(this._get('aktifkan_potongan_pulang_cepat', 'true')) === 'true';
 
         // Tab Penggajian
         setVal('set-overtime-rate', this._get('overtime_rate', 0));
@@ -138,6 +140,7 @@ const settings = {
                 jam_lembur_min: val('set-jam-lembur-min'),
                 toleransi_telat_menit: val('set-toleransi-telat'),
                 allow_overtime_anytime: document.getElementById('set-ot-anytime')?.checked || false,
+                aktifkan_potongan_pulang_cepat: document.getElementById('set-aktifkan-pulang-cepat')?.checked || false,
                 overtime_rate: val('set-overtime-rate'),
                 hari_kerja_per_bulan: val('set-hari-kerja'),
                 jam_kerja_per_hari: val('set-jam-kerja'),

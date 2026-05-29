@@ -87,21 +87,38 @@ const adminDashboard = {
         const gajiPokok = parseFloat(emp.gaji_pokok || 0);
         const tarifPerJam = parseFloat(emp.tarif_per_jam || 0);
         const isPerJam = (emp.jenis_gaji === 'per_jam');
+        const hariKerjaPerBulan = parseInt(config.hari_kerja_per_bulan || 25);
+        const jamKerjaPerHari = parseFloat(config.jam_kerja_per_hari || 8);
+        const aktifkanPotongan = String(config.aktifkan_potongan_pulang_cepat || 'true') === 'true';
         let dendaPerMenit = parseFloat(emp.dendatelat || 0);
-        if (dendaPerMenit <= 0 && gajiPokok > 0) dendaPerMenit = Math.round(gajiPokok / 25 / 8 / 60);
+        if (dendaPerMenit <= 0 && gajiPokok > 0) dendaPerMenit = Math.round(gajiPokok / hariKerjaPerBulan / jamKerjaPerHari / 60);
+
+        // Group log by hari untuk hitung durasi (untuk potongan pulang cepat)
+        const userLogs = attendance.filter(log => {
+            if (String(log.userId) !== String(emp.id)) return false;
+            const t = new Date(log.timestamp);
+            return t >= start && t <= end;
+        });
 
         let hadirCount = 0, totalMenitTelat = 0, jamLemburTotal = 0;
-        attendance.forEach(log => {
-            if (String(log.userId) !== String(emp.id)) return;
-            const t = new Date(log.timestamp);
-            if (t < start || t > end) return;
+        const byDay = {};
+        userLogs.forEach(log => {
             const isRejected = String(log.approvalStatus || '').toUpperCase() === 'REJECTED';
+            const t = new Date(log.timestamp);
+            const ymd = this._ymd(t);
             if (log.type === 'MASUK') {
                 if (isRejected) return;
                 hadirCount++;
                 if (log.statusTelat && log.statusTelat !== "0" && log.statusTelat !== "-") {
                     totalMenitTelat += parseInt(log.statusTelat) || 0;
                 }
+                if (!byDay[ymd]) byDay[ymd] = {};
+                byDay[ymd].masuk = t;
+            }
+            if (log.type === 'PULANG') {
+                if (isRejected) return;
+                if (!byDay[ymd]) byDay[ymd] = {};
+                byDay[ymd].pulang = t;
             }
             if (log.type === 'SELESAI_LEMBUR') {
                 if (isRejected) return;
@@ -114,8 +131,10 @@ const adminDashboard = {
         const nominalDenda = Math.round(totalMenitTelat * dendaPerMenit);
         const tunjBensinFull = parseFloat(emp.tunjangan_bensin || 0);
         const tunjKost = parseFloat(emp.tunjangan_kost || 0);
-        const hadirCapped = Math.min(hadirCount, 25);
-        const tunjBensinTerbayar = Math.round(tunjBensinFull * hadirCapped / 25);
+        const hadirCapped = Math.min(hadirCount, hariKerjaPerBulan);
+        const tunjBensinTerbayar = Math.round(tunjBensinFull * hadirCapped / hariKerjaPerBulan);
+
+        const gajiHarian = hariKerjaPerBulan > 0 ? (gajiPokok / hariKerjaPerBulan) : 0;
 
         // Hari Izin APPROVED dalam periode
         let hariIzin = 0;
@@ -133,15 +152,29 @@ const adminDashboard = {
             if (e2 < s2) return;
             hariIzin += Math.floor((e2 - s2) / 86400000) + 1;
         });
-        const potonganIzin = isPerJam ? 0 : Math.round((gajiPokok / 25) * hariIzin);
+        const potonganIzin = isPerJam ? 0 : Math.round(gajiHarian * hariIzin);
+
+        // Potongan pulang cepat proporsional
+        let potonganPulangCepat = 0;
+        if (!isPerJam && aktifkanPotongan) {
+            Object.keys(byDay).forEach(ymd => {
+                const m = byDay[ymd].masuk, p2 = byDay[ymd].pulang;
+                if (!m || !p2) return;
+                const durasi = (p2 - m) / 3600000;
+                if (durasi < jamKerjaPerHari - 0.0833) {
+                    const faktorKurang = Math.max(0, (jamKerjaPerHari - durasi) / jamKerjaPerHari);
+                    potonganPulangCepat += Math.round(gajiHarian * faktorKurang);
+                }
+            });
+        }
 
         let totalGaji;
         if (isPerJam) {
-            const jamKerjaTotal = (hadirCount * 8) + jamLemburTotal;
+            const jamKerjaTotal = (hadirCount * jamKerjaPerHari) + jamLemburTotal;
             const basisGaji = Math.round(jamKerjaTotal * tarifPerJam);
             totalGaji = basisGaji - bpjs + tunjBensinTerbayar + tunjKost;
         } else {
-            totalGaji = (gajiPokok + bonusLembur + tunjBensinTerbayar + tunjKost) - (bpjs + nominalDenda + potonganIzin);
+            totalGaji = (gajiPokok + bonusLembur + tunjBensinTerbayar + tunjKost) - (bpjs + nominalDenda + potonganIzin + potonganPulangCepat);
         }
         return { totalGaji, hadirCount, jamLemburTotal, totalMenitTelat };
     },
