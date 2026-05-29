@@ -20,7 +20,12 @@ const settings = {
         const sections = ['jam', 'payroll', 'cuti', 'libur', 'brand', 'maint'];
         sections.forEach(s => {
             const el = document.getElementById('set-sec-' + s);
-            if (el) el.style.display = (s === tab) ? 'block' : 'none';
+            if (!el) return;
+            const isActive = (s === tab);
+            // Manage both class & inline style — CSS `.hidden` punya !important
+            // jadi harus diremove explicit, bukan cuma override style.display
+            el.classList.remove('hidden');
+            el.style.display = isActive ? 'block' : 'none';
         });
         document.querySelectorAll('.set-tab-btn').forEach(b => {
             const isActive = b.getAttribute('data-set-tab') === tab;
