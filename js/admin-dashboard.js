@@ -97,7 +97,7 @@ const adminDashboard = {
             this._renderChartLembur(employees, attendance, startPeriod, endPeriod);
             this._renderLeaderboards(employees, attendance, config, startPeriod, endPeriod);
             this._renderAnomali(resAnomali);
-            this._renderAlerts(employees, pengajuan, sentMap, today);
+            this._renderAlerts(employees, pengajuan, sentMap, today, { startDay, bulanNamaPeriode, pYear, namaBulan });
 
         } catch (e) {
             console.error("Dashboard Error:", e);
@@ -558,7 +558,7 @@ const adminDashboard = {
         }).join('') + (list.length > 10 ? `<div style="text-align:center; color:#94a3b8; font-size:11px; margin-top:6px;">+${list.length - 10} anomali lainnya</div>` : '');
     },
 
-    _renderAlerts(employees, pengajuan, sentMap, today) {
+    _renderAlerts(employees, pengajuan, sentMap, today, periodeInfo) {
         const alerts = [];
 
         // Alert 1: Pengajuan pending >3 hari
@@ -601,17 +601,44 @@ const adminDashboard = {
             });
         }
 
-        // Alert 3: Slip belum dikirim untuk periode berjalan (kalau sudah lewat tanggal 25)
-        const todayDate = today.getDate();
-        if (todayDate >= 26 || todayDate <= 25) { // selalu cek
-            const belumDikirim = employees.filter(e => !sentMap[String(e.id)]);
-            if (belumDikirim.length > 0 && todayDate >= 25) {
-                alerts.push({
-                    color: '#3b82f6', bg: '#eff6ff', icon: 'fa-paper-plane',
-                    title: `${belumDikirim.length} slip gaji belum dikirim periode ini`,
-                    detail: belumDikirim.slice(0, 3).map(x => this._esc(x.name)).join(', ') + (belumDikirim.length > 3 ? ` +${belumDikirim.length - 3}` : ''),
-                    action: { label: 'Buka Payroll', target: 'payroll-reports' }
-                });
+        // Alert 3: Slip belum dikirim — window-based (hanya muncul saat relevant)
+        // Window: 5 hari menjelang endDay sampai 7 hari setelah endDay
+        // Plus label periode jelas (mis. "Slip Juni 2026 belum dikirim")
+        if (periodeInfo && periodeInfo.startDay) {
+            const startDay = periodeInfo.startDay;
+            const endDay = startDay - 1;
+            const todayDate = today.getDate();
+            const periodeEndThisMonth = new Date(today.getFullYear(), today.getMonth(), endDay, 23, 59, 59);
+            // Hitung jarak hari ini vs endDay periode bulan ini
+            const msFromEnd = today - periodeEndThisMonth;
+            const daysFromEnd = Math.floor(msFromEnd / 86400000);
+            let labelBulan, labelTahun;
+            let showAlert = false;
+            if (daysFromEnd >= 0 && daysFromEnd <= 7) {
+                // Sudah lewat endDay 0-7 hari → reminder slip periode yang baru berakhir
+                // Label periode = bulan dari endDay (= bulan ini)
+                labelBulan = periodeInfo.namaBulan[today.getMonth()];
+                labelTahun = today.getFullYear();
+                showAlert = true;
+            } else if (daysFromEnd < 0 && daysFromEnd >= -5) {
+                // 5 hari menjelang endDay → soft reminder periode current akan segera berakhir
+                labelBulan = periodeInfo.namaBulan[today.getMonth()];
+                labelTahun = today.getFullYear();
+                showAlert = true;
+            }
+            if (showAlert) {
+                const belumDikirim = employees.filter(e => !sentMap[String(e.id)]);
+                if (belumDikirim.length > 0) {
+                    const overdueLabel = daysFromEnd > 0 ? ` (overdue ${daysFromEnd} hari)` : '';
+                    alerts.push({
+                        color: daysFromEnd > 3 ? '#ef4444' : '#3b82f6',
+                        bg: daysFromEnd > 3 ? '#fef2f2' : '#eff6ff',
+                        icon: 'fa-paper-plane',
+                        title: `${belumDikirim.length} slip ${labelBulan} ${labelTahun} belum dikirim${overdueLabel}`,
+                        detail: belumDikirim.slice(0, 3).map(x => this._esc(x.name)).join(', ') + (belumDikirim.length > 3 ? ` +${belumDikirim.length - 3}` : ''),
+                        action: { label: 'Buka Payroll', target: 'payroll-reports' }
+                    });
+                }
             }
         }
 
