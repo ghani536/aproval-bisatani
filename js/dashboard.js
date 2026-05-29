@@ -53,25 +53,29 @@ const dashboard = {
 
         const today = new Date();
         const tahun = today.getFullYear();
-        // Periode payroll berjalan (26 lalu - 25 ini)
-        const todayDate = today.getDate();
-        let pMonth = today.getMonth() + 1, pYear = tahun;
-        if (todayDate >= 26) { pMonth += 1; if (pMonth > 12) { pMonth = 1; pYear++; } }
-        const startPeriod = new Date(pYear, pMonth - 2, 26, 0, 0, 0);
-        const endPeriod = new Date(pYear, pMonth - 1, 25, 23, 59, 59);
-
         // Bulan kalender berjalan (untuk getMyQuotes)
         const bulanSekarang = today.getMonth() + 1;
         const tahunSekarang = today.getFullYear();
 
         try {
-            const [resAtt, resPengajuan, resQuota, resQuotes, resDetail] = await Promise.all([
+            const [resAtt, resPengajuan, resQuota, resQuotes, resDetail, resCfg] = await Promise.all([
                 api.post({ action: 'getAllAttendanceData' }),
                 api.post({ action: 'getMyPengajuan', userId: user.id }),
                 api.post({ action: 'getLeaveQuota', userId: user.id, tahun: tahun }),
                 api.post({ action: 'getMyQuotes', userId: user.id, bulan: bulanSekarang, tahun: tahunSekarang }),
-                api.post({ action: 'getEmployeeDetail', userId: user.id, limitMonths: 3 })
+                api.post({ action: 'getEmployeeDetail', userId: user.id, limitMonths: 3 }),
+                api.post({ action: 'getSettings' })
             ]);
+            const cfg = (resCfg && resCfg.success) ? (resCfg.data || {}) : {};
+            const startDay = parseInt(cfg.periode_start_day || cfg.periodestartday || 26);
+            const endDay = startDay - 1;
+
+            // Periode payroll berjalan
+            const todayDate = today.getDate();
+            let pMonth = today.getMonth() + 1, pYear = tahun;
+            if (todayDate >= startDay) { pMonth += 1; if (pMonth > 12) { pMonth = 1; pYear++; } }
+            const startPeriod = new Date(pYear, pMonth - 2, startDay, 0, 0, 0);
+            const endPeriod = new Date(pYear, pMonth - 1, endDay, 23, 59, 59);
 
             const allAttendance = (resAtt && resAtt.success) ? (resAtt.data || []) : [];
             const myAttendance = allAttendance.filter(a => String(a.userId) === String(user.id));
