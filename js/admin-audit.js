@@ -21,6 +21,58 @@ const adminAudit = {
         this.load();
     },
 
+    toggleFilters() {
+        const el = document.getElementById('audit-filters');
+        if (!el) return;
+        el.style.display = (el.style.display === 'none' || !el.style.display) ? 'flex' : 'none';
+    },
+
+    _tipeLabel(t) {
+        const m = {
+            'MASUK': 'masuk', 'PULANG': 'pulang',
+            'MULAI_LEMBUR': 'mulai lembur', 'SELESAI_LEMBUR': 'selesai lembur',
+            'CUTI': 'cuti', 'IZIN': 'izin'
+        };
+        const key = String(t || '').toUpperCase();
+        return m[key] || String(t || '').toLowerCase();
+    },
+
+    _meta(log) {
+        try { return JSON.parse(log.metadata || '{}'); } catch (e) { return {}; }
+    },
+
+    // Kalimat ringkas bahasa Indonesia: "menyetujui absen masuk <b>Budi</b>"
+    _summary(log) {
+        const meta = this._meta(log);
+        const nama = this._esc(meta.nama || log.target_id || '-');
+        const tipe = this._tipeLabel(meta.tipe || '');
+        const action = String(log.action || '').toUpperCase();
+        const isPengajuan = String(log.target_type || '').toLowerCase() === 'pengajuan';
+
+        if (action === 'EDIT_TIME') {
+            return `mengedit jam absen <b>${nama}</b>${tipe ? ` (${tipe})` : ''}`;
+        }
+        const verb = { 'APPROVE': 'menyetujui', 'REJECT': 'menolak', 'RESET': 'reset' }[action] || action.toLowerCase();
+        if (isPengajuan) {
+            return `${verb} pengajuan ${tipe} <b>${nama}</b>`;
+        }
+        return `${verb} absen ${tipe} <b>${nama}</b>`;
+    },
+
+    // "Hari ini 14:30" / "Kemarin 09:12" / "1 Jun 14:30"
+    _dayLabel(ts) {
+        const m = String(ts).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+        if (!m) return this._esc(ts);
+        const d = new Date(+m[1], +m[2] - 1, +m[3]);
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const diff = Math.round((today - d) / 86400000);
+        const jam = `${m[4]}:${m[5]}`;
+        if (diff === 0) return `Hari ini ${jam}`;
+        if (diff === 1) return `Kemarin ${jam}`;
+        const namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        return `${+m[3]} ${namaBulan[+m[2] - 1]} ${jam}`;
+    },
+
     async load() {
         const wrap = document.getElementById('audit-log-list');
         if (!wrap) return;
@@ -68,7 +120,7 @@ const adminAudit = {
         };
 
         wrap.innerHTML = `<div style="background:#f1f5f9; padding:8px 12px; border-radius:6px; margin-bottom:10px; font-size:12px; color:#475569;">
-            Menampilkan <b>${this.items.length}</b> log terbaru. Sorted by tanggal terbaru.
+            Menampilkan <b>${this.items.length}</b> log terbaru. Klik baris untuk lihat detail perubahan.
         </div>` + this.items.map(log => {
             const a = actionStyle[log.action] || { color: '#64748b', bg: '#f1f5f9', icon: 'fa-circle' };
             const hasDetails = log.old_value || log.new_value || log.metadata;
@@ -80,14 +132,11 @@ const adminAudit = {
                     </div>
                     <div style="flex:1; min-width:0;">
                         <div style="font-size:13px; color:#1e293b;">
-                            <b>${this._esc(log.actor_name)}</b>
-                            <span style="background:${a.bg}; color:${a.color}; padding:1px 8px; border-radius:8px; font-size:10px; font-weight:700; margin-left:4px;">${log.action}</span>
-                            <span style="background:#f1f5f9; color:#475569; padding:1px 8px; border-radius:8px; font-size:10px; margin-left:2px;">${this._esc(log.target_type)}</span>
+                            <b>${this._esc(log.actor_name)}</b> ${this._summary(log)}
                         </div>
-                        <div style="font-size:11px; color:#64748b; margin-top:2px;">${this._esc(log.target_id)}</div>
+                        <div style="font-size:11px; color:#94a3b8; margin-top:2px;"><i class="far fa-clock"></i> ${this._dayLabel(log.timestamp)}</div>
                     </div>
-                    <div style="text-align:right; font-size:11px; color:#94a3b8; white-space:nowrap;">${this._esc(log.timestamp)}</div>
-                    ${hasDetails ? `<i class="fas fa-chevron-down" id="${detailId}-icon" style="color:#94a3b8; transition:transform 0.2s;"></i>` : ''}
+                    ${hasDetails ? `<i class="fas fa-chevron-down" id="${detailId}-icon" style="color:#94a3b8; transition:transform 0.2s; flex-shrink:0;"></i>` : ''}
                 </div>
                 ${hasDetails ? `<div id="${detailId}" style="display:none; padding:0 14px 12px; border-top:1px solid #f1f5f9; background:#fafbfc;">
                     ${log.old_value ? `<div style="margin-top:10px;">
