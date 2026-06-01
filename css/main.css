@@ -282,6 +282,29 @@ img {
     font-size: var(--font-size-2xl);
 }
 
+.sidebar-logo-full {
+    height: 34px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.sidebar-logo-icon {
+    height: 34px;
+    width: auto;
+    object-fit: contain;
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-logo-full {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-logo-icon {
+    display: block;
+}
+
 .sidebar-brand {
     transition: opacity var(--transition);
 }
