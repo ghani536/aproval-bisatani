@@ -780,11 +780,14 @@
                                 <h3 style="margin:0;"><i class="fas fa-history" style="color:#7c3aed;"></i> Audit Log <span style="background:#ede9fe; color:#5b21b6; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; margin-left:6px;"><i class="fas fa-user-shield"></i> SUPER ADMIN</span></h3>
                                 <p style="color:#64748b; font-size:13px; margin:4px 0 0;">Track aktivitas admin: edit jam absen, approve/reject absen & pengajuan</p>
                             </div>
-                            <button onclick="adminAudit.load()" style="background:#7c3aed; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-weight:600;"><i class="fas fa-sync"></i> Refresh</button>
+                            <div style="display:flex; gap:8px;">
+                                <button onclick="adminAudit.toggleFilters()" style="background:#ede9fe; color:#5b21b6; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-weight:600;"><i class="fas fa-filter"></i> Filter</button>
+                                <button onclick="adminAudit.load()" style="background:#7c3aed; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-weight:600;"><i class="fas fa-sync"></i> Refresh</button>
+                            </div>
                         </div>
 
-                        <!-- Filters -->
-                        <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px; padding:12px; background:#f8fafc; border-radius:8px;">
+                        <!-- Filters (disembunyikan default) -->
+                        <div id="audit-filters" style="display:none; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px; padding:12px; background:#f8fafc; border-radius:8px;">
                             <div>
                                 <label style="font-size:11px; font-weight:700; color:#64748b; display:block; margin-bottom:4px;">ACTOR (nama/ID)</label>
                                 <input type="text" id="audit-filter-actor" placeholder="cari admin..." style="padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; width:160px;">
