@@ -83,6 +83,7 @@ const adminPengajuan = {
         const tipeColor = it.tipe === 'CUTI' ? '#10b981' : '#3b82f6';
         const tipeBg = it.tipe === 'CUTI' ? '#dcfce7' : '#dbeafe';
         const isPending = st === 'PENDING';
+        const canDecide = this._canDecide();
 
         return `
             <div style="border:1px solid #e2e8f0; border-radius:10px; padding:14px; background:white;">
@@ -103,18 +104,24 @@ const adminPengajuan = {
                 ${it.catatan_admin ? `<div style="font-size:12px; color:#64748b; border-left:3px solid ${stColor}; padding-left:8px; margin-bottom:8px;"><b>Catatan:</b> ${this._esc(it.catatan_admin)}</div>` : ''}
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
                     <div style="font-size:11px; color:#94a3b8;">Diajukan ${it.submitted_at}${it.decided_at ? ' · diputuskan ' + it.decided_at + (it.decided_by ? ' oleh ' + this._esc(it.decided_by) : '') : ''}</div>
-                    ${isPending ? `
+                    ${canDecide ? (isPending ? `
                         <div style="display:flex; gap:6px;">
                             <button onclick="adminPengajuan.openDecide(${it.rowId}, 'REJECTED')" style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;"><i class="fas fa-times"></i> Reject</button>
                             <button onclick="adminPengajuan.openDecide(${it.rowId}, 'APPROVED')" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;"><i class="fas fa-check"></i> Approve</button>
                         </div>` : `
-                        <button onclick="adminPengajuan.openDecide(${it.rowId}, 'PENDING')" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;"><i class="fas fa-undo"></i> Reset ke Pending</button>`}
+                        <button onclick="adminPengajuan.openDecide(${it.rowId}, 'PENDING')" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;"><i class="fas fa-undo"></i> Reset ke Pending</button>`) : (isPending ? `
+                        <span style="font-size:11px; color:#94a3b8; font-style:italic;"><i class="fas fa-lock"></i> Menunggu keputusan super admin</span>` : '')}
                 </div>
             </div>`;
     },
 
     _esc(s) {
         return String(s == null ? '' : s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+
+    // Hanya super admin yang boleh approve/reject cuti & izin
+    _canDecide() {
+        return String((auth.user && auth.user.role) || '').toLowerCase() === 'superadmin';
     },
 
     openDecide(rowId, status) {
