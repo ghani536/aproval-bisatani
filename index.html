@@ -262,6 +262,7 @@
                 <div class="nav-section superadmin-only hidden" id="superadmin-section">
                     <span class="nav-label" style="color:#7c3aed;"><i class="fas fa-user-shield"></i> Super Admin</span>
                     <ul class="nav-list">
+                        <li class="nav-item" data-page="kpi-jobdesk"><a href="#" class="nav-link"><i class="fas fa-bullseye"></i><span>KPI &amp; Jobdesk</span></a></li>
                         <li class="nav-item" data-page="audit-log"><a href="#" class="nav-link"><i class="fas fa-history"></i><span>Audit Log</span></a></li>
                     </ul>
                 </div>
@@ -825,6 +826,153 @@
                         </div>
 
                         <div id="audit-log-list"><div style="text-align:center; color:#94a3b8; padding:40px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                    </div>
+                </div>
+
+                <!-- KPI & Jobdesk (super admin only) -->
+                <div class="page" id="page-kpi-jobdesk">
+                    <div style="padding:20px; background:#fff; border-radius:12px;">
+                        <div style="margin-bottom:14px;">
+                            <h3 style="margin:0;"><i class="fas fa-bullseye" style="color:#7c3aed;"></i> KPI &amp; Jobdesk <span style="background:#ede9fe; color:#5b21b6; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; margin-left:6px;"><i class="fas fa-user-shield"></i> SUPER ADMIN</span></h3>
+                            <p style="color:#64748b; font-size:13px; margin:4px 0 0;">Kelola template KPI per divisi &amp; KPI/jobdesk tiap karyawan</p>
+                        </div>
+
+                        <!-- Tab switch -->
+                        <div style="display:flex; gap:8px; margin-bottom:16px; border-bottom:1px solid #e2e8f0;">
+                            <button id="kpi-tabbtn-employee" onclick="adminKpi.switchTab('employee')" style="background:none; border:none; border-bottom:3px solid #7c3aed; color:#7c3aed; padding:10px 14px; cursor:pointer; font-weight:700; font-size:14px;"><i class="fas fa-user"></i> Per Karyawan</button>
+                            <button id="kpi-tabbtn-template" onclick="adminKpi.switchTab('template')" style="background:none; border:none; border-bottom:3px solid transparent; color:#64748b; padding:10px 14px; cursor:pointer; font-weight:600; font-size:14px;"><i class="fas fa-layer-group"></i> Template Divisi</button>
+                        </div>
+
+                        <!-- TAB: Per Karyawan -->
+                        <div id="kpi-tab-employee">
+                            <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:16px;">
+                                <div>
+                                    <label style="font-size:11px; font-weight:700; color:#64748b; display:block; margin-bottom:4px;">PILIH KARYAWAN</label>
+                                    <select id="kpi-emp-select" onchange="adminKpi.loadEmployeeKpi()" style="padding:9px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; min-width:240px;"><option value="">— pilih karyawan —</option></select>
+                                </div>
+                                <button onclick="adminKpi.openAssignModal()" style="background:#ede9fe; color:#5b21b6; border:none; padding:9px 14px; border-radius:6px; cursor:pointer; font-weight:600;"><i class="fas fa-download"></i> Assign Template Divisi</button>
+                            </div>
+                            <div id="kpi-emp-content"><div style="text-align:center; color:#94a3b8; padding:40px;">Pilih karyawan untuk melihat KPI &amp; jobdesk-nya.</div></div>
+                        </div>
+
+                        <!-- TAB: Template Divisi -->
+                        <div id="kpi-tab-template" style="display:none;">
+                            <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:16px;">
+                                <div>
+                                    <label style="font-size:11px; font-weight:700; color:#64748b; display:block; margin-bottom:4px;">DIVISI</label>
+                                    <select id="kpi-tpl-divisi" onchange="adminKpi.loadTemplates()" style="padding:9px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; min-width:200px;"></select>
+                                </div>
+                                <button onclick="adminKpi.openItemModal('template')" style="background:#7c3aed; color:white; border:none; padding:9px 14px; border-radius:6px; cursor:pointer; font-weight:600;"><i class="fas fa-plus"></i> Tambah Indikator</button>
+                            </div>
+                            <div id="kpi-tpl-content"><div style="text-align:center; color:#94a3b8; padding:40px;">Memuat template...</div></div>
+                        </div>
+                    </div>
+
+                    <!-- Modal: KPI Item (template & per-karyawan) -->
+                    <div id="modal-kpi-item" class="modal-custom" style="display:none;">
+                        <div class="modal-content" style="background:white; padding:24px; border-radius:12px; width:92%; max-width:540px;">
+                            <h3 id="modal-kpi-item-title" style="margin:0 0 16px;">Tambah Indikator KPI</h3>
+                            <input type="hidden" id="kpi-item-id">
+                            <input type="hidden" id="kpi-item-mode">
+                            <div id="kpi-item-divisi-wrap" style="margin-bottom:10px;">
+                                <label style="font-size:12px; font-weight:600; color:#475569;">Divisi</label>
+                                <input type="text" id="kpi-item-divisi" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;" placeholder="contoh: KOL">
+                            </div>
+                            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                                <div style="flex:2;">
+                                    <label style="font-size:12px; font-weight:600; color:#475569;">Area</label>
+                                    <input type="text" id="kpi-item-area" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;" placeholder="contoh: 1. TikTok Affiliate">
+                                </div>
+                                <div style="flex:1;">
+                                    <label style="font-size:12px; font-weight:600; color:#475569;">Urutan Area</label>
+                                    <input type="number" id="kpi-item-urutan-area" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;" value="1">
+                                </div>
+                            </div>
+                            <div style="margin-bottom:10px;">
+                                <label style="font-size:12px; font-weight:600; color:#475569;">Indikator *</label>
+                                <input type="text" id="kpi-item-indikator" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;" placeholder="contoh: Kode Spark Video">
+                            </div>
+                            <div style="margin-bottom:10px;">
+                                <label style="font-size:12px; font-weight:600; color:#475569;">SOP / Keterangan</label>
+                                <textarea id="kpi-item-sop" rows="2" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px; font-family:inherit; resize:vertical;"></textarea>
+                            </div>
+                            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                                <div style="flex:1;">
+                                    <label style="font-size:12px; font-weight:600; color:#475569;">Target</label>
+                                    <input type="number" id="kpi-item-target" step="any" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;" value="1">
+                                </div>
+                                <div style="flex:1;">
+                                    <label style="font-size:12px; font-weight:600; color:#475569;">Satuan</label>
+                                    <input type="text" id="kpi-item-satuan" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;" placeholder="video">
+                                </div>
+                                <div style="flex:1;">
+                                    <label style="font-size:12px; font-weight:600; color:#475569;">Periode</label>
+                                    <select id="kpi-item-periode" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;">
+                                        <option value="HARIAN">Harian</option>
+                                        <option value="MINGGUAN">Mingguan</option>
+                                        <option value="BULANAN">Bulanan</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                                <div style="flex:1;">
+                                    <label style="font-size:12px; font-weight:600; color:#475569;">Bobot (%)</label>
+                                    <input type="number" id="kpi-item-bobot" step="any" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;" value="0">
+                                </div>
+                                <div style="flex:1;">
+                                    <label style="font-size:12px; font-weight:600; color:#475569;">Urutan</label>
+                                    <input type="number" id="kpi-item-urutan" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;" value="0">
+                                </div>
+                                <div style="flex:1; display:flex; align-items:end; padding-bottom:9px;">
+                                    <label style="font-size:13px; color:#475569; cursor:pointer;"><input type="checkbox" id="kpi-item-aktif" checked> Aktif</label>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+                                <button onclick="adminKpi.closeModal('modal-kpi-item')" style="background:#e2e8f0; color:#475569; border:none; padding:9px 16px; border-radius:6px; cursor:pointer;">Batal</button>
+                                <button onclick="adminKpi.saveItem()" style="background:#7c3aed; color:white; border:none; padding:9px 18px; border-radius:6px; cursor:pointer; font-weight:600;"><i class="fas fa-save"></i> Simpan</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal: Jobdesk -->
+                    <div id="modal-kpi-jobdesk" class="modal-custom" style="display:none;">
+                        <div class="modal-content" style="background:white; padding:24px; border-radius:12px; width:92%; max-width:480px;">
+                            <h3 id="modal-kpi-jobdesk-title" style="margin:0 0 16px;">Tambah Jobdesk</h3>
+                            <input type="hidden" id="kpi-jd-id">
+                            <div style="margin-bottom:10px;">
+                                <label style="font-size:12px; font-weight:600; color:#475569;">Jobdesk *</label>
+                                <textarea id="kpi-jd-text" rows="3" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px; font-family:inherit; resize:vertical;" placeholder="Deskripsi tugas..."></textarea>
+                            </div>
+                            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                                <div style="flex:1;">
+                                    <label style="font-size:12px; font-weight:600; color:#475569;">Urutan</label>
+                                    <input type="number" id="kpi-jd-urutan" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;" value="0">
+                                </div>
+                                <div style="flex:1; display:flex; align-items:end; padding-bottom:9px;">
+                                    <label style="font-size:13px; color:#475569; cursor:pointer;"><input type="checkbox" id="kpi-jd-aktif" checked> Aktif</label>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+                                <button onclick="adminKpi.closeModal('modal-kpi-jobdesk')" style="background:#e2e8f0; color:#475569; border:none; padding:9px 16px; border-radius:6px; cursor:pointer;">Batal</button>
+                                <button onclick="adminKpi.saveJobdesk()" style="background:#7c3aed; color:white; border:none; padding:9px 18px; border-radius:6px; cursor:pointer; font-weight:600;"><i class="fas fa-save"></i> Simpan</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal: Assign Template -->
+                    <div id="modal-kpi-assign" class="modal-custom" style="display:none;">
+                        <div class="modal-content" style="background:white; padding:24px; border-radius:12px; width:92%; max-width:440px;">
+                            <h3 style="margin:0 0 8px;">Assign Template Divisi</h3>
+                            <p style="color:#64748b; font-size:13px; margin:0 0 16px;">Salin semua indikator aktif dari template divisi ke karyawan ini. Indikator yang sudah ada tidak diduplikasi.</p>
+                            <div style="margin-bottom:10px;">
+                                <label style="font-size:12px; font-weight:600; color:#475569;">Divisi</label>
+                                <select id="kpi-assign-divisi" style="width:100%; padding:9px; border:1px solid #cbd5e1; border-radius:6px; margin-top:4px;"></select>
+                            </div>
+                            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:18px;">
+                                <button onclick="adminKpi.closeModal('modal-kpi-assign')" style="background:#e2e8f0; color:#475569; border:none; padding:9px 16px; border-radius:6px; cursor:pointer;">Batal</button>
+                                <button onclick="adminKpi.doAssign()" style="background:#7c3aed; color:white; border:none; padding:9px 18px; border-radius:6px; cursor:pointer; font-weight:600;"><i class="fas fa-download"></i> Assign</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1507,6 +1655,7 @@
     <script src="js/admin-pengajuan.js"></script>
     <script src="js/admin-pengumuman.js"></script>
     <script src="js/admin-audit.js"></script>
+    <script src="js/admin-kpi.js"></script>
     <script src="js/admin-performance.js"></script>
 
     <script>

@@ -134,6 +134,9 @@ const router = {
                 case 'audit-log':
                     if (window.adminAudit) adminAudit.init();
                     break;
+                case 'kpi-jobdesk':
+                    if (window.adminKpi) adminKpi.init();
+                    break;
             }
         } catch (e) {
             console.error("Router: Gagal init halaman " + page, e);
