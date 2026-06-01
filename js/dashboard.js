@@ -58,7 +58,7 @@ const dashboard = {
         const tahunSekarang = today.getFullYear();
 
         try {
-            const [resAtt, resPengajuan, resQuota, resQuotes, resDetail, resCfg, resPengumuman, resPerf] = await Promise.all([
+            const [resAtt, resPengajuan, resQuota, resQuotes, resDetail, resCfg, resPengumuman, resPerf, resAllEmp] = await Promise.all([
                 api.post({ action: 'getAllAttendanceData' }),
                 api.post({ action: 'getMyPengajuan', userId: user.id }),
                 api.post({ action: 'getLeaveQuota', userId: user.id, tahun: tahun }),
@@ -66,7 +66,8 @@ const dashboard = {
                 api.post({ action: 'getEmployeeDetail', userId: user.id, limitMonths: 3 }),
                 api.post({ action: 'getSettings' }),
                 api.post({ action: 'getPengumumanAktif' }),
-                api.post({ action: 'getPerformanceReviews', userId: user.id })
+                api.post({ action: 'getPerformanceReviews', userId: user.id }),
+                api.post({ action: 'getEmployees' })
             ]);
             const cfg = (resCfg && resCfg.success) ? (resCfg.data || {}) : {};
             const startDay = parseInt(cfg.periode_start_day || cfg.periodestartday || 26);
@@ -87,7 +88,11 @@ const dashboard = {
             const riwayatGaji = (resDetail && resDetail.success) ? (resDetail.riwayat_gaji || []) : [];
             const pengumuman = (resPengumuman && resPengumuman.success) ? (resPengumuman.data || []) : [];
             const perfReviews = (resPerf && resPerf.success) ? (resPerf.data || []) : [];
+            const allEmployees = (resAllEmp && resAllEmp.success) ? (resAllEmp.data || []) : [];
+            const myProfile = allEmployees.find(e => String(e.id) === String(user.id));
 
+            this._renderBirthdayBanner(myProfile, today);
+            this._renderRekanUltah(allEmployees, user.id, today);
             this._renderPengumumanBanner(pengumuman);
             this._renderStatusToday(myAttendance, today);
             this._renderKuota(quota);
@@ -347,6 +352,88 @@ const dashboard = {
                 <div style="font-size:14px; font-weight:700; color:#166534;">${this._fmtRp(r.total_gaji)}</div>
             </div>
         `).join('');
+    },
+
+    _hitungUmur(tglLahir, refDate) {
+        if (!tglLahir) return null;
+        const d = new Date(tglLahir);
+        if (isNaN(d)) return null;
+        const ref = refDate || new Date();
+        let umur = ref.getFullYear() - d.getFullYear();
+        if (ref.getMonth() < d.getMonth() ||
+            (ref.getMonth() === d.getMonth() && ref.getDate() < d.getDate())) {
+            umur--;
+        }
+        return Math.max(0, umur);
+    },
+
+    _renderBirthdayBanner(profile, today) {
+        const wrap = document.getElementById('emp-birthday-banner');
+        if (!wrap) return;
+        if (!profile || !profile.tanggal_lahir) { wrap.style.display = 'none'; return; }
+        const d = new Date(profile.tanggal_lahir);
+        if (isNaN(d) || d.getMonth() !== today.getMonth() || d.getDate() !== today.getDate()) {
+            wrap.style.display = 'none';
+            return;
+        }
+        const umur = this._hitungUmur(profile.tanggal_lahir, today);
+        wrap.style.display = 'block';
+        wrap.innerHTML = `<div style="background:linear-gradient(135deg,#fbbf24,#f59e0b,#d97706); color:white; padding:18px 22px; border-radius:14px; text-align:center; box-shadow:0 6px 16px rgba(245,158,11,0.3);">
+            <div style="font-size:36px; margin-bottom:6px;">🎂🎉🎊</div>
+            <div style="font-size:18px; font-weight:800; margin-bottom:4px;">Selamat Ulang Tahun, ${this._esc(profile.name)}!</div>
+            ${umur !== null ? `<div style="font-size:14px; font-weight:600; opacity:0.95;">Selamat menempuh usia ke-${umur} 🥳</div>` : ''}
+            <div style="font-size:12px; opacity:0.9; margin-top:8px; line-height:1.5;">Semoga panjang umur, sehat selalu, dan dilancarkan rezekinya. Tetap semangat berkarya untuk PT. Bisatani! 🌟</div>
+        </div>`;
+    },
+
+    _renderRekanUltah(allEmployees, currentUserId, today) {
+        const card = document.getElementById('emp-rekan-ultah-card');
+        const content = document.getElementById('emp-rekan-ultah-content');
+        if (!card || !content) return;
+
+        const namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const todayMonth = today.getMonth();
+        const todayDate = today.getDate();
+
+        const rekan = (allEmployees || [])
+            .filter(e => String(e.id) !== String(currentUserId)) // exclude diri sendiri
+            .filter(e => String(e.role || '').toLowerCase() !== 'admin') // skip admin
+            .filter(e => e.tanggal_lahir)
+            .map(e => {
+                const d = new Date(e.tanggal_lahir);
+                if (isNaN(d) || d.getMonth() !== todayMonth) return null;
+                return { name: e.name, tgl: d.getDate(), isToday: d.getDate() === todayDate };
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.tgl - b.tgl);
+
+        if (rekan.length === 0) {
+            card.style.display = 'none';
+            return;
+        }
+        card.style.display = 'block';
+
+        const todayRekan = rekan.filter(r => r.isToday);
+        let html = '';
+        if (todayRekan.length > 0) {
+            html += `<div style="background:linear-gradient(135deg,#fef3c7,#fde68a); padding:10px 12px; border-radius:8px; margin-bottom:8px; color:#92400e;">
+                <div style="font-size:12px; font-weight:700;">🎂 Hari ini ulang tahun:</div>
+                <div style="font-size:13px; margin-top:2px;">${todayRekan.map(r => this._esc(r.name)).join(', ')}</div>
+                <div style="font-size:11px; opacity:0.8; margin-top:4px;">Yuk kirim ucapan! 💌</div>
+            </div>`;
+        }
+
+        const lainnya = rekan.filter(r => !r.isToday);
+        if (lainnya.length > 0) {
+            html += lainnya.map(r => {
+                const isPast = r.tgl < todayDate;
+                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:${isPast ? '#f8fafc' : '#fffbeb'}; border-radius:6px; margin-bottom:4px; ${isPast ? 'opacity:0.6;' : ''} font-size:12px;">
+                    <span style="color:#1e293b; font-weight:500;">${this._esc(r.name)}</span>
+                    <span style="background:${isPast ? '#cbd5e1' : '#f59e0b'}; color:white; padding:2px 8px; border-radius:8px; font-size:10px; font-weight:700;">${r.tgl} ${namaBulan[todayMonth]}</span>
+                </div>`;
+            }).join('');
+        }
+        content.innerHTML = html;
     },
 
     _renderPengumumanBanner(items) {
