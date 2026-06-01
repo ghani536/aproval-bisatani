@@ -289,6 +289,9 @@
                     <!-- Banner pengumuman aktif -->
                     <div id="emp-pengumuman-banner" style="display:none; margin-bottom:14px;"></div>
 
+                    <!-- Birthday banner (personal) -->
+                    <div id="emp-birthday-banner" style="display:none; margin-bottom:14px;"></div>
+
                     <!-- Welcome banner gradient -->
                     <div id="emp-welcome-card" style="background:linear-gradient(135deg,#10b981,#059669); color:white; padding:18px 20px; border-radius:14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
                         <div style="flex:1; min-width:0;">
@@ -374,6 +377,12 @@
                     <div id="emp-perf-card" style="display:none; background:#fff; padding:14px 16px; border-radius:12px; margin-bottom:14px;">
                         <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; margin-bottom:8px;"><i class="fas fa-star" style="color:#7c3aed;"></i> Performance Saya</div>
                         <div id="emp-perf-content"></div>
+                    </div>
+
+                    <!-- Rekan Ulang Tahun -->
+                    <div id="emp-rekan-ultah-card" style="display:none; background:#fff; padding:14px 16px; border-radius:12px; margin-bottom:14px;">
+                        <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; margin-bottom:8px;">🎂 Rekan Ulang Tahun Bulan Ini</div>
+                        <div id="emp-rekan-ultah-content"></div>
                     </div>
 
                     <!-- Tips card -->
@@ -1182,6 +1191,14 @@
                         </div>
                     </div>
 
+                    <!-- Ulang Tahun -->
+                    <div id="dash-ultah-card" style="display:none; background:#fff; padding:16px; border-radius:12px; margin-bottom:16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                            <h4 style="margin:0; font-size:14px; color:#1e293b;">🎂 Ulang Tahun <small style="color:#94a3b8; font-weight:400;">(bulan ini)</small></h4>
+                        </div>
+                        <div id="dash-ultah-list"></div>
+                    </div>
+
                     <!-- Anomali Terdeteksi -->
                     <div style="background:#fff; padding:16px; border-radius:12px; margin-bottom:16px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
@@ -1308,6 +1325,76 @@
                         <small style="display:block; margin-top:4px; color:#94a3b8; font-size:10px;">Flat per bulan, tidak dipotong oleh kehadiran. Isi 0 jika tidak kost.</small>
                     </div>
                 </div>
+
+                <!-- Section: Profil Personal -->
+                <div style="grid-column: 1 / -1; margin-top: 20px; padding-top:14px; border-top:2px dashed #e2e8f0;">
+                    <h4 style="margin:0 0 12px; font-size:14px; color:#475569;"><i class="fas fa-user-circle" style="color:#6366f1;"></i> Profil Personal</h4>
+                </div>
+                <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; color: #6366f1;">TANGGAL LAHIR</label>
+                        <input type="date" id="emp-tanggal-lahir" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <small style="display:block; margin-top:4px; color:#94a3b8; font-size:10px;">Untuk birthday greeting otomatis di dashboard 🎂</small>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; color: #6366f1;">JENIS KELAMIN</label>
+                        <select id="emp-jenis-kelamin" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <option value="">-- Pilih --</option>
+                            <option value="L">Laki-laki</option>
+                            <option value="P">Perempuan</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size: 11px; font-weight: 700; color: #6366f1;">NIK (KTP)</label>
+                        <input type="text" id="emp-nik-ktp" maxlength="16" placeholder="16 digit" inputmode="numeric" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: monospace;">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size: 11px; font-weight: 700; color: #6366f1;">ALAMAT LENGKAP</label>
+                        <textarea id="emp-alamat-lengkap" rows="2" placeholder="Jalan, RT/RW, Kelurahan, Kecamatan, Kota, Provinsi, Kode Pos" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; resize:vertical; font-family:inherit;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; color: #6366f1;">NO HP UTAMA</label>
+                        <input type="tel" id="emp-no-hp-utama" placeholder="08123456789" inputmode="tel" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <small style="display:block; margin-top:4px; color:#94a3b8; font-size:10px;">WhatsApp aktif</small>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; color: #6366f1;">NO HP ALTERNATIF</label>
+                        <input type="tel" id="emp-no-hp-alternatif" placeholder="08123456789 (opsional)" inputmode="tel" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                    </div>
+                </div>
+
+                <!-- Section: Kontak Darurat -->
+                <div style="grid-column: 1 / -1; margin-top: 16px; padding-top:14px; border-top:2px dashed #e2e8f0;">
+                    <h4 style="margin:0 0 12px; font-size:14px; color:#475569;"><i class="fas fa-exclamation-circle" style="color:#dc2626;"></i> Kontak Darurat</h4>
+                    <small style="color:#94a3b8; font-size:11px;">Dihubungi saat ada kondisi emergency (sakit, kecelakaan, dll)</small>
+                </div>
+                <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; color: #dc2626;">NAMA</label>
+                        <input type="text" id="emp-kd-nama" placeholder="Nama lengkap kontak darurat" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: 700; color: #dc2626;">HUBUNGAN</label>
+                        <select id="emp-kd-hubungan" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <option value="">-- Pilih --</option>
+                            <option value="Ayah">Ayah</option>
+                            <option value="Ibu">Ibu</option>
+                            <option value="Suami">Suami</option>
+                            <option value="Istri">Istri</option>
+                            <option value="Anak">Anak</option>
+                            <option value="Kakak">Kakak</option>
+                            <option value="Adik">Adik</option>
+                            <option value="Saudara">Saudara</option>
+                            <option value="Teman">Teman</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size: 11px; font-weight: 700; color: #dc2626;">NO HP KONTAK DARURAT</label>
+                        <input type="tel" id="emp-kd-hp" placeholder="08123456789" inputmode="tel" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                    </div>
+                </div>
+
                 <div style="margin-top: 25px; display: flex; gap: 10px;">
                     <button type="submit" style="flex: 1; background: #10b981; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 700;">SIMPAN</button>
                     <button type="button" onclick="document.getElementById('modal-employee').style.display='none'" style="flex: 1; background: #f1f5f9; color: #64748b; border: none; padding: 12px; border-radius: 8px; cursor: pointer;">BATAL</button>

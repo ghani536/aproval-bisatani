@@ -238,6 +238,12 @@ const adminEmployees = {
                 const joinInfo = document.getElementById('emp-join-info');
                 if (joinEl) joinEl.value = new Date().toISOString().slice(0, 10);
                 if (joinInfo) joinInfo.textContent = 'Default: hari ini. Ubah jika karyawan sudah bekerja sebelumnya.';
+                // Clear profil personal fields
+                ['emp-tanggal-lahir', 'emp-jenis-kelamin', 'emp-nik-ktp', 'emp-alamat-lengkap',
+                 'emp-no-hp-utama', 'emp-no-hp-alternatif', 'emp-kd-nama', 'emp-kd-hubungan', 'emp-kd-hp'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
                 document.getElementById('modal-employee').style.display = 'flex';
             };
         }
@@ -278,7 +284,17 @@ const adminEmployees = {
                 no_rekening: (document.getElementById('emp-rekening') || {}).value || "",
                 tunjangan_bensin: (document.getElementById('emp-tunjangan-bensin') || {}).value || "0",
                 tunjangan_kost: (document.getElementById('emp-tunjangan-kost') || {}).value || "0",
-                joinDate: (document.getElementById('emp-join-date') || {}).value || ""
+                joinDate: (document.getElementById('emp-join-date') || {}).value || "",
+                // Profil personal
+                tanggal_lahir: (document.getElementById('emp-tanggal-lahir') || {}).value || "",
+                jenis_kelamin: (document.getElementById('emp-jenis-kelamin') || {}).value || "",
+                nik_ktp: (document.getElementById('emp-nik-ktp') || {}).value || "",
+                alamat_lengkap: (document.getElementById('emp-alamat-lengkap') || {}).value || "",
+                no_hp_utama: (document.getElementById('emp-no-hp-utama') || {}).value || "",
+                no_hp_alternatif: (document.getElementById('emp-no-hp-alternatif') || {}).value || "",
+                kontak_darurat_nama: (document.getElementById('emp-kd-nama') || {}).value || "",
+                kontak_darurat_hubungan: (document.getElementById('emp-kd-hubungan') || {}).value || "",
+                kontak_darurat_hp: (document.getElementById('emp-kd-hp') || {}).value || ""
             };
             // Password: hanya kirim kalau diisi (kosong = backend pakai password lama)
             if (pwdEl && pwdEl.value.trim() !== "") {
@@ -352,6 +368,18 @@ const adminEmployees = {
         if (bensinEl) bensinEl.value = emp.tunjangan_bensin || 0;
         if (kostEl) kostEl.value = emp.tunjangan_kost || 0;
 
+        // Profil personal
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val == null ? '' : val; };
+        setVal('emp-tanggal-lahir', emp.tanggal_lahir || '');
+        setVal('emp-jenis-kelamin', emp.jenis_kelamin || '');
+        setVal('emp-nik-ktp', emp.nik_ktp || '');
+        setVal('emp-alamat-lengkap', emp.alamat_lengkap || '');
+        setVal('emp-no-hp-utama', emp.no_hp_utama || '');
+        setVal('emp-no-hp-alternatif', emp.no_hp_alternatif || '');
+        setVal('emp-kd-nama', emp.kontak_darurat_nama || '');
+        setVal('emp-kd-hubungan', emp.kontak_darurat_hubungan || '');
+        setVal('emp-kd-hp', emp.kontak_darurat_hp || '');
+
         // Join date
         const joinEl = document.getElementById('emp-join-date');
         const joinInfo = document.getElementById('emp-join-info');
@@ -400,9 +428,32 @@ const adminEmployees = {
         return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
     },
 
+    _hitungUmur(tanggalLahir) {
+        if (!tanggalLahir) return null;
+        const d = new Date(tanggalLahir);
+        if (isNaN(d)) return null;
+        const today = new Date();
+        let umur = today.getFullYear() - d.getFullYear();
+        if (today.getMonth() < d.getMonth() ||
+            (today.getMonth() === d.getMonth() && today.getDate() < d.getDate())) {
+            umur--;
+        }
+        return Math.max(0, umur);
+    },
+
+    _isUlangTahunHariIni(tanggalLahir) {
+        if (!tanggalLahir) return false;
+        const d = new Date(tanggalLahir);
+        if (isNaN(d)) return false;
+        const today = new Date();
+        return d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
+    },
+
     _renderDetail(emp, riwayat) {
         const namaBulan = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
         const isPerJam = emp.jenis_gaji === 'per_jam';
+        const umur = this._hitungUmur(emp.tanggal_lahir);
+        const isUltahToday = this._isUlangTahunHariIni(emp.tanggal_lahir);
 
         // Mini bar chart: cari max gaji untuk normalisasi
         let chart = '';
@@ -495,10 +546,64 @@ const adminEmployees = {
                 </div>
             </div>
 
+            <!-- Section: Profil Personal -->
+            ${(emp.tanggal_lahir || emp.no_hp_utama || emp.alamat_lengkap || emp.nik_ktp) ? `
+            <h4 style="margin:16px 0 8px; font-size:14px; color:#1e293b;"><i class="fas fa-user-circle" style="color:#6366f1;"></i> Profil Personal</h4>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+                ${emp.tanggal_lahir ? `<div style="background:${isUltahToday ? 'linear-gradient(135deg,#fef3c7,#fde68a)' : '#f8fafc'}; padding:12px; border-radius:8px; ${isUltahToday ? 'border:2px solid #f59e0b;' : ''}">
+                    <div style="font-size:11px; color:#64748b; font-weight:600; margin-bottom:4px;">${isUltahToday ? '🎂 ULANG TAHUN HARI INI!' : 'TANGGAL LAHIR'}</div>
+                    <div style="font-size:13px; color:#1e293b; font-weight:${isUltahToday ? '700' : '500'};">${this._esc(emp.tanggal_lahir)} ${umur !== null ? `<span style="color:#64748b; font-weight:400;">· ${umur} thn</span>` : ''}</div>
+                </div>` : ''}
+                ${emp.jenis_kelamin ? `<div style="background:#f8fafc; padding:12px; border-radius:8px;">
+                    <div style="font-size:11px; color:#64748b; font-weight:600; margin-bottom:4px;">JENIS KELAMIN</div>
+                    <div style="font-size:13px; color:#1e293b;">${emp.jenis_kelamin === 'L' ? '♂ Laki-laki' : emp.jenis_kelamin === 'P' ? '♀ Perempuan' : this._esc(emp.jenis_kelamin)}</div>
+                </div>` : ''}
+                ${emp.nik_ktp ? `<div style="background:#f8fafc; padding:12px; border-radius:8px; grid-column:span 2;">
+                    <div style="font-size:11px; color:#64748b; font-weight:600; margin-bottom:4px;">NIK KTP</div>
+                    <div style="font-size:13px; color:#1e293b; font-family:monospace;">${this._esc(emp.nik_ktp)}</div>
+                </div>` : ''}
+                ${emp.no_hp_utama ? `<div style="background:#f8fafc; padding:12px; border-radius:8px;">
+                    <div style="font-size:11px; color:#64748b; font-weight:600; margin-bottom:4px;"><i class="fab fa-whatsapp" style="color:#10b981;"></i> NO HP UTAMA</div>
+                    <a href="https://wa.me/${this._normalizeWA(emp.no_hp_utama)}" target="_blank" style="font-size:13px; color:#10b981; text-decoration:none; font-weight:600;">${this._esc(emp.no_hp_utama)}</a>
+                </div>` : ''}
+                ${emp.no_hp_alternatif ? `<div style="background:#f8fafc; padding:12px; border-radius:8px;">
+                    <div style="font-size:11px; color:#64748b; font-weight:600; margin-bottom:4px;">NO HP ALTERNATIF</div>
+                    <div style="font-size:13px; color:#1e293b;">${this._esc(emp.no_hp_alternatif)}</div>
+                </div>` : ''}
+                ${emp.alamat_lengkap ? `<div style="background:#f8fafc; padding:12px; border-radius:8px; grid-column:span 2;">
+                    <div style="font-size:11px; color:#64748b; font-weight:600; margin-bottom:4px;"><i class="fas fa-map-marker-alt"></i> ALAMAT</div>
+                    <div style="font-size:13px; color:#1e293b; line-height:1.5;">${this._esc(emp.alamat_lengkap)}</div>
+                </div>` : ''}
+            </div>
+            ` : ''}
+
+            <!-- Section: Kontak Darurat -->
+            ${(emp.kontak_darurat_nama || emp.kontak_darurat_hp) ? `
+            <h4 style="margin:16px 0 8px; font-size:14px; color:#1e293b;"><i class="fas fa-exclamation-circle" style="color:#dc2626;"></i> Kontak Darurat</h4>
+            <div style="background:#fef2f2; padding:12px; border-radius:8px; border-left:3px solid #dc2626; margin-bottom:14px;">
+                <div style="font-size:13px; color:#1e293b;">
+                    <b>${this._esc(emp.kontak_darurat_nama || '-')}</b>
+                    ${emp.kontak_darurat_hubungan ? `<span style="color:#94a3b8;"> (${this._esc(emp.kontak_darurat_hubungan)})</span>` : ''}
+                </div>
+                ${emp.kontak_darurat_hp ? `<div style="font-size:12px; margin-top:4px;">
+                    <i class="fab fa-whatsapp" style="color:#10b981;"></i>
+                    <a href="https://wa.me/${this._normalizeWA(emp.kontak_darurat_hp)}" target="_blank" style="color:#10b981; text-decoration:none; font-weight:600;">${this._esc(emp.kontak_darurat_hp)}</a>
+                </div>` : ''}
+            </div>
+            ` : ''}
+
             <h4 style="margin:16px 0 8px; font-size:14px; color:#1e293b;"><i class="fas fa-history" style="color:#10b981;"></i> Riwayat Slip Gaji</h4>
             ${chart}
             ${tableHtml}
         `;
+    },
+
+    _normalizeWA(num) {
+        // 08123456789 → 628123456789 (format internasional untuk wa.me)
+        let s = String(num || '').replace(/[^0-9]/g, '');
+        if (s.startsWith('0')) s = '62' + s.substring(1);
+        else if (s.startsWith('8')) s = '62' + s;
+        return s;
     },
 
     _esc(s) {

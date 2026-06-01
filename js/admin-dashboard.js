@@ -102,6 +102,7 @@ const adminDashboard = {
             this._renderChartTrend(attendance, today);
             this._renderChartLembur(employees, attendance, startPeriod, endPeriod);
             this._renderLeaderboards(employees, attendance, config, startPeriod, endPeriod);
+            this._renderUlangTahun(employees, today);
             this._renderAnomali(resAnomali);
             this._renderAlerts(employees, pengajuan, sentMap, today, { startDay, bulanNamaPeriode, pYear, namaBulan });
 
@@ -533,6 +534,88 @@ const adminDashboard = {
 
         document.getElementById('dash-top-disiplin').innerHTML = renderList(disiplin, '#10b981', '#f0fdf4', 'Belum ada data hadir di periode ini', false);
         document.getElementById('dash-top-telat').innerHTML = renderList(telat, '#ef4444', '#fef2f2', 'Belum ada keterlambatan 🎉', true);
+    },
+
+    _renderUlangTahun(employees, today) {
+        const card = document.getElementById('dash-ultah-card');
+        const list = document.getElementById('dash-ultah-list');
+        if (!card || !list) return;
+
+        const namaBulan = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const todayMonth = today.getMonth();
+        const todayDate = today.getDate();
+
+        const hitungUmur = (tglLahir) => {
+            const d = new Date(tglLahir);
+            if (isNaN(d)) return null;
+            let umur = today.getFullYear() - d.getFullYear();
+            if (today.getMonth() < d.getMonth() ||
+                (today.getMonth() === d.getMonth() && today.getDate() < d.getDate())) {
+                umur--;
+            }
+            return Math.max(0, umur);
+        };
+
+        const ultahBulanIni = employees
+            .filter(e => e.tanggal_lahir)
+            .map(e => {
+                const d = new Date(e.tanggal_lahir);
+                if (isNaN(d) || d.getMonth() !== todayMonth) return null;
+                return {
+                    id: e.id, name: e.name, position: e.position,
+                    no_hp: e.no_hp_utama || '',
+                    tgl: d.getDate(),
+                    umur: hitungUmur(e.tanggal_lahir),
+                    isToday: d.getDate() === todayDate
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.tgl - b.tgl);
+
+        if (ultahBulanIni.length === 0) {
+            card.style.display = 'none';
+            return;
+        }
+        card.style.display = 'block';
+
+        const todayUltah = ultahBulanIni.filter(u => u.isToday);
+        let html = '';
+
+        if (todayUltah.length > 0) {
+            html += `<div style="background:linear-gradient(135deg,#fef3c7,#fbbf24); padding:14px; border-radius:10px; margin-bottom:10px; color:#78350f;">
+                <div style="font-size:14px; font-weight:700; margin-bottom:6px;">🎉 Hari ini ulang tahun!</div>
+                ${todayUltah.map(u => `<div style="background:rgba(255,255,255,0.5); padding:8px 12px; border-radius:6px; margin-top:6px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <div>
+                        <b>${this._esc(u.name)}</b> ${u.umur !== null ? `<span style="color:#92400e;">· ${u.umur} thn</span>` : ''}
+                        <div style="font-size:11px; color:#92400e;">${this._esc(u.position || '-')}</div>
+                    </div>
+                    ${u.no_hp ? `<a href="https://wa.me/${this._normalizeWA(u.no_hp)}?text=${encodeURIComponent('Halo ' + u.name + ', selamat ulang tahun! 🎂 Semoga panjang umur, sehat, dan dilancarkan rezekinya 🙏')}" target="_blank" style="background:#10b981; color:white; text-decoration:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600;"><i class="fab fa-whatsapp"></i> Kirim Ucapan</a>` : ''}
+                </div>`).join('')}
+            </div>`;
+        }
+
+        const lainnya = ultahBulanIni.filter(u => !u.isToday);
+        if (lainnya.length > 0) {
+            html += `<div style="font-size:11px; color:#64748b; font-weight:600; margin:6px 0;">JADWAL ULTAH ${namaBulan[todayMonth + 1].toUpperCase()} (${lainnya.length})</div>`;
+            html += lainnya.map(u => {
+                const isPast = u.tgl < todayDate;
+                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:${isPast ? '#f8fafc' : '#fffbeb'}; border-radius:6px; margin-bottom:4px; ${isPast ? 'opacity:0.6;' : ''}">
+                    <div>
+                        <span style="font-weight:600; color:#1e293b;">${this._esc(u.name)}</span>
+                        ${u.umur !== null ? `<span style="color:#94a3b8; font-size:11px;"> · ke-${u.umur + (isPast ? 0 : 1)}</span>` : ''}
+                    </div>
+                    <span style="background:${isPast ? '#cbd5e1' : '#f59e0b'}; color:white; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700;">${u.tgl} ${namaBulan[todayMonth + 1]}</span>
+                </div>`;
+            }).join('');
+        }
+        list.innerHTML = html;
+    },
+
+    _normalizeWA(num) {
+        let s = String(num || '').replace(/[^0-9]/g, '');
+        if (s.startsWith('0')) s = '62' + s.substring(1);
+        else if (s.startsWith('8')) s = '62' + s;
+        return s;
     },
 
     _renderAnomali(resAnomali) {
