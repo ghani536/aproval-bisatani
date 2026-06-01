@@ -118,6 +118,7 @@ const settings = {
         setVal('set-alamat', this._get('alamat_perusahaan', ''));
         setVal('set-logo-url', this._get('logo_url', ''));
         setVal('set-email-sender', this._get('email_sender_name', 'PT. Bisatani Payroll'));
+        setVal('set-email-notif-pengajuan', this._get('email_notif_pengajuan', ''));
     },
 
     setupCutiPreview() {
@@ -179,7 +180,8 @@ const settings = {
                 nama_perusahaan: val('set-nama-perusahaan'),
                 alamat_perusahaan: val('set-alamat'),
                 logo_url: val('set-logo-url'),
-                email_sender_name: val('set-email-sender')
+                email_sender_name: val('set-email-sender'),
+                email_notif_pengajuan: val('set-email-notif-pengajuan')
             };
 
             const res = await api.post(payload);
