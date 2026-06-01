@@ -153,7 +153,9 @@ const adminPengajuan = {
                 rowId: this._decideRow,
                 status: this._decideStatus,
                 decided_by: (auth.user && (auth.user.name || auth.user.nama)) || 'admin',
-                catatan_admin: document.getElementById('ap-decide-catatan').value.trim()
+                catatan_admin: document.getElementById('ap-decide-catatan').value.trim(),
+                actor_id: (auth.user && auth.user.id) || '',
+                actor_name: (auth.user && (auth.user.name || auth.user.nama)) || 'admin'
             });
             if (res && res.success) {
                 this.closeDecide();

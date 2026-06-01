@@ -257,6 +257,12 @@
                         <li class="nav-item" data-page="admin-performance"><a href="#" class="nav-link"><i class="fas fa-star-half-alt"></i><span>Performance Review</span></a></li>
                     </ul>
                 </div>
+                <div class="nav-section superadmin-only hidden" id="superadmin-section">
+                    <span class="nav-label" style="color:#7c3aed;"><i class="fas fa-user-shield"></i> Super Admin</span>
+                    <ul class="nav-list">
+                        <li class="nav-item" data-page="audit-log"><a href="#" class="nav-link"><i class="fas fa-history"></i><span>Audit Log</span></a></li>
+                    </ul>
+                </div>
                 <div class="nav-section">
                     <span class="nav-label">Laporan & Gaji</span>
                     <ul class="nav-list">
@@ -763,6 +769,57 @@
                             </div>
                             <div id="perf-history-content"></div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Audit Log (super admin only) -->
+                <div class="page" id="page-audit-log">
+                    <div style="padding:20px; background:#fff; border-radius:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <div>
+                                <h3 style="margin:0;"><i class="fas fa-history" style="color:#7c3aed;"></i> Audit Log <span style="background:#ede9fe; color:#5b21b6; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; margin-left:6px;"><i class="fas fa-user-shield"></i> SUPER ADMIN</span></h3>
+                                <p style="color:#64748b; font-size:13px; margin:4px 0 0;">Track aktivitas admin: edit jam absen, approve/reject absen & pengajuan</p>
+                            </div>
+                            <button onclick="adminAudit.load()" style="background:#7c3aed; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-weight:600;"><i class="fas fa-sync"></i> Refresh</button>
+                        </div>
+
+                        <!-- Filters -->
+                        <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px; padding:12px; background:#f8fafc; border-radius:8px;">
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b; display:block; margin-bottom:4px;">ACTOR (nama/ID)</label>
+                                <input type="text" id="audit-filter-actor" placeholder="cari admin..." style="padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; width:160px;">
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b; display:block; margin-bottom:4px;">AKSI</label>
+                                <select id="audit-filter-action" style="padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                                    <option value="">Semua aksi</option>
+                                    <option value="APPROVE">Approve</option>
+                                    <option value="REJECT">Reject</option>
+                                    <option value="RESET">Reset</option>
+                                    <option value="EDIT_TIME">Edit Waktu</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b; display:block; margin-bottom:4px;">TARGET</label>
+                                <select id="audit-filter-target" style="padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                                    <option value="">Semua</option>
+                                    <option value="attendance">Attendance</option>
+                                    <option value="pengajuan">Pengajuan</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b; display:block; margin-bottom:4px;">DARI</label>
+                                <input type="date" id="audit-filter-from" style="padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                            </div>
+                            <div>
+                                <label style="font-size:11px; font-weight:700; color:#64748b; display:block; margin-bottom:4px;">SAMPAI</label>
+                                <input type="date" id="audit-filter-to" style="padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;">
+                            </div>
+                            <button onclick="adminAudit.load()" style="background:#7c3aed; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px;"><i class="fas fa-filter"></i> Apply</button>
+                            <button onclick="adminAudit.clearFilters()" style="background:#e2e8f0; color:#475569; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:13px;">Clear</button>
+                        </div>
+
+                        <div id="audit-log-list"><div style="text-align:center; color:#94a3b8; padding:40px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
                     </div>
                 </div>
 
@@ -1439,6 +1496,7 @@
     <script src="js/cuti-izin.js"></script>
     <script src="js/admin-pengajuan.js"></script>
     <script src="js/admin-pengumuman.js"></script>
+    <script src="js/admin-audit.js"></script>
     <script src="js/admin-performance.js"></script>
 
     <script>

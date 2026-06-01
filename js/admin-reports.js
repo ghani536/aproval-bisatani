@@ -82,11 +82,13 @@ async updateApproval(rowId, status) {
         try {
             console.log("🚀 Menggunakan Jalur saveEmployee...");
             
-            const res = await api.post({ 
+            const res = await api.post({
                 action: 'saveEmployee',      // Kembali ke asal
                 subAction: 'updateApproval', // Numpang di sini
-                rowId: rowId, 
-                status: status 
+                rowId: rowId,
+                status: status,
+                actor_id: (auth.user && auth.user.id) || '',
+                actor_name: (auth.user && (auth.user.name || auth.user.nama)) || 'admin'
             });
 
             if (res && res.success) {
@@ -316,7 +318,12 @@ async updateApproval(rowId, status) {
         const orig = btn ? btn.innerHTML : '';
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; }
 
-        const payload = { action: 'updateAttendanceTime', rowId: rowId };
+        const payload = {
+            action: 'updateAttendanceTime',
+            rowId: rowId,
+            actor_id: (auth.user && auth.user.id) || '',
+            actor_name: (auth.user && (auth.user.name || auth.user.nama)) || 'admin'
+        };
 
         if (type === 'SELESAI_LEMBUR') {
             const m = (document.getElementById('edit-mulai-lembur') || {}).value;

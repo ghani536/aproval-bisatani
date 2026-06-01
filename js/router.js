@@ -131,6 +131,9 @@ const router = {
                 case 'admin-performance':
                     if (window.adminPerformance) adminPerformance.init();
                     break;
+                case 'audit-log':
+                    if (window.adminAudit) adminAudit.init();
+                    break;
             }
         } catch (e) {
             console.error("Router: Gagal init halaman " + page, e);
