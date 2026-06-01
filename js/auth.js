@@ -115,7 +115,10 @@ const auth = {
             const roleEl = document.getElementById('user-role');
 
             if (nameEl) nameEl.textContent = this.user.name;
-            if (roleEl) roleEl.textContent = this.user.role === 'admin' ? 'Administrator' : 'Karyawan';
+            if (roleEl) {
+                const r = String(this.user.role || '').toLowerCase();
+                roleEl.textContent = r === 'superadmin' ? 'Super Admin' : (r === 'admin' ? 'Administrator' : 'Karyawan');
+            }
             
             // Manajemen Menu Admin vs Karyawan vs Super Admin
             const adminMenu = document.getElementById('admin-menu-nav');

@@ -45,8 +45,8 @@ const adminPerformance = {
                 api.post({ action: 'getEmployees' }),
                 api.post({ action: 'getPerformanceReviews' })
             ]);
-            // Skip akun admin dari list review (admin tidak di-review)
-            this.employees = ((resEmp && resEmp.success) ? (resEmp.data || []) : []).filter(e => String(e.role || '').toLowerCase() !== 'admin');
+            // Skip akun admin & superadmin dari list review (admin tidak di-review)
+            this.employees = ((resEmp && resEmp.success) ? (resEmp.data || []) : []).filter(e => !['admin', 'superadmin'].includes(String(e.role || '').toLowerCase()));
             this.reviews = (resPerf && resPerf.success) ? (resPerf.data || []) : [];
             this.render();
         } catch (e) {
