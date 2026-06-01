@@ -197,13 +197,20 @@ const adminDashboard = {
             });
         }
 
+        // Potongan mangkir (hanya bulanan)
+        let potonganMangkir = 0;
+        if (!isPerJam) {
+            const hariMangkir = Math.max(0, hariKerjaPerBulan - hadirCount - hariIzin); // dashboard skip hariCuti detail
+            potonganMangkir = Math.round(gajiHarian * hariMangkir);
+        }
+
         let totalGaji;
         if (isPerJam) {
             const jamKerjaTotal = (hadirCount * jamKerjaPerHari) + jamLemburTotal;
             const basisGaji = Math.round(jamKerjaTotal * tarifPerJam);
             totalGaji = basisGaji - bpjs + tunjBensinTerbayar + tunjKost;
         } else {
-            totalGaji = (gajiPokok + bonusLembur + tunjBensinTerbayar + tunjKost) - (bpjs + nominalDenda + potonganIzin + potonganPulangCepat);
+            totalGaji = (gajiPokok + bonusLembur + tunjBensinTerbayar + tunjKost) - (bpjs + nominalDenda + potonganIzin + potonganPulangCepat + potonganMangkir);
         }
         return { totalGaji, hadirCount, jamLemburTotal, totalMenitTelat };
     },
