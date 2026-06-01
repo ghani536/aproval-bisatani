@@ -258,7 +258,9 @@ const adminApproval = {
                 action: 'saveEmployee',
                 subAction: 'updateApproval',
                 rowId: rowId,
-                status: status
+                status: status,
+                actor_id: (auth.user && auth.user.id) || '',
+                actor_name: (auth.user && (auth.user.name || auth.user.nama)) || 'admin'
             });
             if (res && res.success) {
                 // Update lokal
@@ -291,7 +293,9 @@ const adminApproval = {
                     action: 'saveEmployee',
                     subAction: 'updateApproval',
                     rowId: rowId,
-                    status: status
+                    status: status,
+                    actor_id: (auth.user && auth.user.id) || '',
+                    actor_name: (auth.user && (auth.user.name || auth.user.nama)) || 'admin'
                 });
                 if (res && res.success) {
                     success++;

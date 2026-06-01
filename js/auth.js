@@ -117,18 +117,23 @@ const auth = {
             if (nameEl) nameEl.textContent = this.user.name;
             if (roleEl) roleEl.textContent = this.user.role === 'admin' ? 'Administrator' : 'Karyawan';
             
-            // Manajemen Menu Admin vs Karyawan
+            // Manajemen Menu Admin vs Karyawan vs Super Admin
             const adminMenu = document.getElementById('admin-menu-nav');
             const empMenu = document.getElementById('employee-menu');
-            const isAdmin = this.user.role === 'admin';
+            const role = String(this.user.role || '').toLowerCase();
+            const isSuperAdmin = role === 'superadmin';
+            const isAdmin = role === 'admin' || isSuperAdmin; // superadmin inherits admin privileges
 
-            // Toggle class di body untuk styling navigation karyawan vs admin
+            // Toggle class di body untuk styling navigation
             document.body.classList.toggle('is-employee', !isAdmin);
             document.body.classList.toggle('is-admin', isAdmin);
+            document.body.classList.toggle('is-superadmin', isSuperAdmin);
 
             // Toggle nav items berdasarkan role (di sidebar + bottom nav)
             document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', !isAdmin));
             document.querySelectorAll('.employee-only').forEach(el => el.classList.toggle('hidden', isAdmin));
+            // Super admin only menu (Audit Log)
+            document.querySelectorAll('.superadmin-only').forEach(el => el.classList.toggle('hidden', !isSuperAdmin));
 
             if (isAdmin) {
                 if (adminMenu) adminMenu.classList.remove('hidden');
