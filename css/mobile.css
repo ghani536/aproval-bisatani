@@ -700,7 +700,12 @@
         height: 50px;
         font-size: 1.5rem;
     }
-    
+
+    .login-logo-img {
+        width: 100px;
+        height: 100px;
+    }
+
     .floating-icons i {
         font-size: 1rem;
     }
