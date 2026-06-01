@@ -397,7 +397,7 @@ const dashboard = {
 
         const rekan = (allEmployees || [])
             .filter(e => String(e.id) !== String(currentUserId)) // exclude diri sendiri
-            .filter(e => String(e.role || '').toLowerCase() !== 'admin') // skip admin
+            .filter(e => !['admin', 'superadmin'].includes(String(e.role || '').toLowerCase())) // skip admin & superadmin
             .filter(e => e.tanggal_lahir)
             .map(e => {
                 const d = new Date(e.tanggal_lahir);

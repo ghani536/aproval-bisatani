@@ -140,11 +140,12 @@ const adminEmployees = {
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        // Filter admin kecuali toggle ON
-        const adminCount = this.employees.filter(e => String(e.role || '').toLowerCase() === 'admin').length;
+        // Filter admin & superadmin kecuali toggle ON
+        const isAdminRole = (r) => ['admin', 'superadmin'].includes(String(r || '').toLowerCase());
+        const adminCount = this.employees.filter(e => isAdminRole(e.role)).length;
         const displayedEmployees = this.showAdmin
             ? this.employees
-            : this.employees.filter(e => String(e.role || '').toLowerCase() !== 'admin');
+            : this.employees.filter(e => !isAdminRole(e.role));
 
         // Inject toggle bar di atas tabel (cari container parent)
         this._renderAdminToggle(adminCount);
@@ -177,7 +178,9 @@ const adminEmployees = {
                 </div>
             `;
 
-            const isAdmin = String(emp.role || '').toLowerCase() === 'admin';
+            const roleLower = String(emp.role || '').toLowerCase();
+            const isSuper = roleLower === 'superadmin';
+            const isAdmin = roleLower === 'admin' || isSuper;
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9; ${isAdmin ? 'background:#faf5ff;' : ''}">
                     <td style="text-align:center; padding:12px;">${index + 1}</td>
@@ -185,7 +188,7 @@ const adminEmployees = {
                         <a href="#" onclick="event.preventDefault(); adminEmployees.showDetail('${String(emp.id).replace(/'/g, "\\'")}')" style="color:${isAdmin ? '#7c3aed' : '#10b981'}; text-decoration:none; font-weight:600;" title="Klik untuk lihat detail">
                             ${emp.name} <i class="fas fa-info-circle" style="font-size:11px; opacity:0.6;"></i>
                         </a>
-                        ${isAdmin ? '<span style="background:#ede9fe; color:#5b21b6; padding:1px 6px; border-radius:8px; font-size:9px; font-weight:700; margin-left:4px;"><i class="fas fa-user-shield"></i> ADMIN</span>' : ''}
+                        ${isAdmin ? `<span style="background:#ede9fe; color:#5b21b6; padding:1px 6px; border-radius:8px; font-size:9px; font-weight:700; margin-left:4px;"><i class="fas fa-user-shield"></i> ${isSuper ? 'SUPER ADMIN' : 'ADMIN'}</span>` : ''}
                         <br><small style="color:#64748b;">ID: ${emp.id}</small>
                     </td>
                     <td style="padding:12px;">${emp.email || '-'}</td>

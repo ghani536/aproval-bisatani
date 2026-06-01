@@ -92,8 +92,8 @@ const payroll = {
                 resSent.data.forEach(s => { this.sentMap[String(s.userId)] = s; });
             }
 
-            // Skip akun admin dari kalkulasi payroll
-            this.employees = (resEmp.data || []).filter(e => String(e.role || '').toLowerCase() !== 'admin');
+            // Skip akun admin & superadmin dari kalkulasi payroll
+            this.employees = (resEmp.data || []).filter(e => !['admin', 'superadmin'].includes(String(e.role || '').toLowerCase()));
             this.attendance = resAtt.data || [];
             this.config = resCfg.data || {};
             this.pengajuan = (resPengajuan && resPengajuan.success) ? (resPengajuan.data || []) : [];
