@@ -243,6 +243,7 @@
                         <li class="nav-item active" data-page="dashboard"><a href="#" class="nav-link"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
                         <li class="nav-item" data-page="absensi"><a href="#" class="nav-link"><i class="fas fa-clock"></i><span>Absensi & Lembur</span></a></li>
                         <li class="nav-item" data-page="quote-saya"><a href="#" class="nav-link"><i class="fas fa-quote-left"></i><span>Quote Saya</span></a></li>
+                        <li class="nav-item streamer-only hidden" data-page="live-streamer"><a href="#" class="nav-link"><i class="fas fa-video"></i><span>Live Streamer</span></a></li>
                     </ul>
                 </div>
             </nav>
@@ -257,6 +258,7 @@
                         <li class="nav-item" data-page="admin-pengajuan"><a href="#" class="nav-link"><i class="fas fa-calendar-day"></i><span>Pengajuan</span><span id="pengajuan-badge" style="display:none; background:#ef4444; color:white; border-radius:10px; padding:2px 8px; font-size:10px; font-weight:700; margin-left:auto;">0</span></a></li>
                         <li class="nav-item" data-page="admin-pengumuman"><a href="#" class="nav-link"><i class="fas fa-bullhorn"></i><span>Pengumuman</span></a></li>
                         <li class="nav-item" data-page="admin-performance"><a href="#" class="nav-link"><i class="fas fa-star-half-alt"></i><span>Performance Review</span></a></li>
+                        <li class="nav-item" data-page="admin-live"><a href="#" class="nav-link"><i class="fas fa-video"></i><span>Live Streamer</span></a></li>
                     </ul>
                 </div>
                 <div class="nav-section superadmin-only hidden" id="superadmin-section">
@@ -976,6 +978,104 @@
                     </div>
                 </div>
 
+                <!-- ============ LIVE STREAMER (karyawan) ============ -->
+                <div class="page" id="page-live-streamer">
+                    <div style="max-width:480px; margin:0 auto; padding:8px 4px 90px;">
+                        <div style="text-align:center; margin-bottom:8px;">
+                            <h3 style="margin:0;"><i class="fas fa-video" style="color:#ef4444;"></i> Live Streamer</h3>
+                            <div id="live-clock-2" style="font-size:1.4rem; font-weight:800; color:#1e293b; margin-top:2px; letter-spacing:1px;">00:00:00</div>
+                        </div>
+                        <div style="margin:8px auto; width:280px; height:210px; background:#000; border-radius:12px; overflow:hidden; border:3px solid #ef4444; position:relative;">
+                            <video id="live-webcam" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform:scaleX(-1);"></video>
+                        </div>
+                        <p id="live-loc-text" style="font-size:0.82rem; color:#10b981; text-align:center; margin:6px 0 14px;"><i class="fas fa-map-marker-alt"></i> Mencari lokasi...</p>
+                        <div id="live-content"><div style="text-align:center;color:#94a3b8;padding:20px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                        <div id="live-history" style="margin-top:22px;"></div>
+                    </div>
+                </div>
+
+                <!-- ============ LIVE STREAMER (admin) ============ -->
+                <div class="page" id="page-admin-live">
+                    <div style="padding:16px 20px 80px; background:#fff; border-radius:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <h3 style="margin:0;"><i class="fas fa-video" style="color:#ef4444;"></i> Live Streamer</h3>
+                            <span style="background:#fee2e2; color:#b91c1c; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;">ADMIN</span>
+                        </div>
+                        <div style="display:flex; gap:4px; border-bottom:2px solid #e2e8f0; margin-bottom:16px;">
+                            <button id="al-tabbtn-rekap" onclick="adminLive.switchTab('rekap')" style="padding:10px 16px; background:none; border:none; border-bottom:3px solid #ef4444; margin-bottom:-2px; cursor:pointer; font-size:13px; font-weight:700; color:#ef4444;">Rekap Sesi</button>
+                            <button id="al-tabbtn-toko" onclick="adminLive.switchTab('toko')" style="padding:10px 16px; background:none; border:none; border-bottom:3px solid transparent; margin-bottom:-2px; cursor:pointer; font-size:13px; font-weight:600; color:#64748b;">Master Toko</button>
+                            <button id="al-tabbtn-komisi" onclick="adminLive.switchTab('komisi')" style="padding:10px 16px; background:none; border:none; border-bottom:3px solid transparent; margin-bottom:-2px; cursor:pointer; font-size:13px; font-weight:600; color:#64748b;">Komisi</button>
+                        </div>
+
+                        <div id="al-tab-rekap">
+                            <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+                                <div><label style="display:block; font-size:11px; color:#64748b; margin-bottom:3px;">Dari</label><input type="date" id="al-from" style="padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;"></div>
+                                <div><label style="display:block; font-size:11px; color:#64748b; margin-bottom:3px;">Sampai</label><input type="date" id="al-to" style="padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;"></div>
+                                <div><label style="display:block; font-size:11px; color:#64748b; margin-bottom:3px;">Status</label><select id="al-status" style="padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;"><option value="">Semua</option><option value="SELESAI">Selesai</option><option value="BERLANGSUNG">Berlangsung</option></select></div>
+                                <button onclick="adminLive.loadSessions()" style="background:#ef4444; color:#fff; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fas fa-sync"></i> Tampilkan</button>
+                            </div>
+                            <div id="al-rekap-content"><div style="text-align:center;color:#94a3b8;padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                        </div>
+
+                        <div id="al-tab-toko" style="display:none;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <p style="color:#64748b; font-size:13px; margin:0;">Daftar toko yang bisa dipilih streamer saat live.</p>
+                                <button onclick="adminLive.openTokoModal()" style="background:#10b981; color:#fff; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fas fa-plus"></i> Tambah Toko</button>
+                            </div>
+                            <div id="al-toko-content"><div style="text-align:center;color:#94a3b8;padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                        </div>
+
+                        <div id="al-tab-komisi" style="display:none;">
+                            <div style="max-width:420px;">
+                                <div style="background:#fef2f2; border-left:4px solid #ef4444; padding:12px 14px; border-radius:8px; margin-bottom:16px; font-size:13px; color:#7f1d1d;">
+                                    Komisi tiap sesi = <b>jumlah closing × tarif per closing</b>. Jika ada co-host, komisi dibagi 50/50. Tarif yang dipakai dikunci saat sesi disimpan.
+                                </div>
+                                <label style="display:block; font-size:13px; color:#334155; font-weight:600; margin-bottom:6px;">Komisi per Closing (Rp)</label>
+                                <div style="display:flex; gap:8px;">
+                                    <input type="number" id="al-rate" min="0" step="500" placeholder="0" style="flex:1; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:15px;">
+                                    <button onclick="adminLive.saveRate()" style="background:#ef4444; color:#fff; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; font-weight:600;">Simpan</button>
+                                </div>
+                                <div id="al-rate-info" style="margin-top:10px; font-size:12px; color:#64748b;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Toko -->
+                        <div id="modal-live-toko" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:16px;">
+                            <div style="background:#fff; border-radius:14px; padding:22px; width:100%; max-width:420px;">
+                                <h4 id="modal-live-toko-title" style="margin:0 0 16px;">Tambah Toko</h4>
+                                <input type="hidden" id="lt-id">
+                                <label style="display:block; font-size:12px; color:#475569; margin-bottom:4px; font-weight:600;">Nama Toko</label>
+                                <input type="text" id="lt-nama" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:12px;">
+                                <label style="display:block; font-size:12px; color:#475569; margin-bottom:4px; font-weight:600;">Platform</label>
+                                <select id="lt-platform" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:12px;"><option value="TikTok">TikTok</option><option value="Shopee">Shopee</option><option value="Lainnya">Lainnya</option></select>
+                                <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#334155; margin-bottom:18px;"><input type="checkbox" id="lt-aktif" checked> Aktif (bisa dipilih streamer)</label>
+                                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                                    <button onclick="adminLive.closeModal('modal-live-toko')" style="background:#e2e8f0; color:#475569; border:none; padding:9px 16px; border-radius:8px; cursor:pointer;">Batal</button>
+                                    <button onclick="adminLive.saveToko()" style="background:#10b981; color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Simpan</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Edit Sesi -->
+                        <div id="modal-live-edit" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; padding:16px;">
+                            <div style="background:#fff; border-radius:14px; padding:22px; width:100%; max-width:420px;">
+                                <h4 style="margin:0 0 4px;">Edit Sesi Live</h4>
+                                <p id="le-info" style="margin:0 0 16px; font-size:12px; color:#64748b;"></p>
+                                <input type="hidden" id="le-id">
+                                <label style="display:block; font-size:12px; color:#475569; margin-bottom:4px; font-weight:600;">Jumlah Closing</label>
+                                <input type="number" id="le-closing" min="0" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:12px;">
+                                <label style="display:block; font-size:12px; color:#475569; margin-bottom:4px; font-weight:600;">Jumlah Penonton (opsional)</label>
+                                <input type="number" id="le-penonton" min="0" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:18px;">
+                                <div id="le-komisi-preview" style="font-size:13px; color:#0f766e; margin-bottom:16px;"></div>
+                                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                                    <button onclick="adminLive.closeModal('modal-live-edit')" style="background:#e2e8f0; color:#475569; border:none; padding:9px 16px; border-radius:8px; cursor:pointer;">Batal</button>
+                                    <button onclick="adminLive.saveEdit()" style="background:#3b82f6; color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Simpan</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="page" id="page-admin-quote">
                     <div style="padding:20px; background:#fff; border-radius:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
@@ -1656,6 +1756,8 @@
     <script src="js/admin-pengumuman.js"></script>
     <script src="js/admin-audit.js"></script>
     <script src="js/admin-kpi.js"></script>
+    <script src="js/live-streamer.js"></script>
+    <script src="js/admin-live.js"></script>
     <script src="js/admin-performance.js"></script>
 
     <script>

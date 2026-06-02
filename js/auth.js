@@ -137,6 +137,10 @@ const auth = {
             document.querySelectorAll('.employee-only').forEach(el => el.classList.toggle('hidden', isAdmin));
             // Super admin only menu (Audit Log)
             document.querySelectorAll('.superadmin-only').forEach(el => el.classList.toggle('hidden', !isSuperAdmin));
+            // Menu khusus Live Streamer (deteksi dari department/position)
+            const _ds = (String(this.user.department || '') + ' ' + String(this.user.position || '')).toLowerCase();
+            const isStreamer = _ds.indexOf('live streamer') !== -1 || _ds.indexOf('livestreamer') !== -1;
+            document.querySelectorAll('.streamer-only').forEach(el => el.classList.toggle('hidden', !isStreamer));
 
             if (isAdmin) {
                 if (adminMenu) adminMenu.classList.remove('hidden');

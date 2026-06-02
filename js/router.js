@@ -137,6 +137,12 @@ const router = {
                 case 'kpi-jobdesk':
                     if (window.adminKpi) adminKpi.init();
                     break;
+                case 'live-streamer':
+                    if (window.liveStreamer) liveStreamer.init();
+                    break;
+                case 'admin-live':
+                    if (window.adminLive) adminLive.init();
+                    break;
             }
         } catch (e) {
             console.error("Router: Gagal init halaman " + page, e);
