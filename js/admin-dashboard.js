@@ -75,7 +75,7 @@ const adminDashboard = {
             const resPayrollSent = await api.post({ action: 'getPayrollSentLog', bulan: alertPeriodLabel, tahun: String(alertPeriodYear) });
 
             // Skip akun admin & superadmin dari semua counter & report
-            const employees = ((resEmp && resEmp.success) ? (resEmp.data || []) : []).filter(e => !['admin', 'superadmin'].includes(String(e.role || '').toLowerCase()));
+            const employees = ((resEmp && resEmp.success) ? (resEmp.data || []) : []).filter(e => !['admin', 'superadmin'].includes(String(e.role || '').toLowerCase()) && !(window.isLiveStreamer && window.isLiveStreamer(e)));
             const attendance = (resAtt && resAtt.success) ? (resAtt.data || []) : [];
             const config = cfgEarly;
             const pengajuan = (resPengajuan && resPengajuan.success) ? (resPengajuan.data || []) : [];

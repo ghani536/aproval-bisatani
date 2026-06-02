@@ -141,6 +141,8 @@ const auth = {
             const _ds = (String(this.user.department || '') + ' ' + String(this.user.position || '')).toLowerCase();
             const isStreamer = _ds.indexOf('live streamer') !== -1 || _ds.indexOf('livestreamer') !== -1;
             document.querySelectorAll('.streamer-only').forEach(el => el.classList.toggle('hidden', !isStreamer));
+            // Streamer: absen via menu Live, sembunyikan menu Absensi biasa
+            document.querySelectorAll('.streamer-hide').forEach(el => el.classList.toggle('hidden', isStreamer));
 
             if (isAdmin) {
                 if (adminMenu) adminMenu.classList.remove('hidden');

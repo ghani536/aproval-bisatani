@@ -126,3 +126,11 @@ function enhanceAllScrollableTables() {
     document.querySelectorAll('.table-responsive').forEach(enhanceTableScroll);
 }
 window.enhanceAllScrollableTables = enhanceAllScrollableTables;
+
+// Deteksi karyawan Live Streamer (dari department/position).
+// Dipakai untuk mengeluarkan streamer dari monitoring absensi karyawan biasa.
+window.isLiveStreamer = function (emp) {
+    if (!emp) return false;
+    var s = (String(emp.department || '') + ' ' + String(emp.position || '')).toLowerCase();
+    return s.indexOf('live streamer') !== -1 || s.indexOf('livestreamer') !== -1;
+};
