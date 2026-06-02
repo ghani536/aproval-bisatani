@@ -185,6 +185,11 @@ const liveStreamer = {
                 <div style="flex:1;"><div style="font-size:18px;font-weight:800;">Rp ${totKomisi.toLocaleString('id-ID')}</div><div style="font-size:10px;opacity:0.85;">Komisi (bagian saya)</div></div>
             </div>
         </div>`;
+
+        // Quote bulan ini: full width (kartu streak sebelahnya disembunyikan)
+        const qc = document.getElementById('emp-quote-count');
+        const grid = qc && qc.parentElement ? qc.parentElement.parentElement : null;
+        if (grid) grid.style.gridTemplateColumns = '1fr';
     },
     _setLoc(html, color) {
         const el = document.getElementById('live-loc-text');
@@ -280,12 +285,25 @@ const liveStreamer = {
     },
 
     // ---------- RENDER: MULAI ----------
+    _today() {
+        const n = new Date();
+        return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+    },
     _renderMulai() {
         const wrap = document.getElementById('live-content');
         if (!this.toko.length) {
             wrap.innerHTML = '<div style="background:#fef3c7;color:#92400e;padding:14px;border-radius:10px;text-align:center;font-size:13px;">Belum ada toko aktif. Hubungi admin untuk menambah toko.</div>';
             return;
         }
+        // Sesi yang sudah dipakai hari ini tidak bisa dipilih lagi
+        const today = this._today();
+        const usedSesi = new Set((this.sessions || []).filter(s => s.tanggal === today).map(s => String(s.sesi)));
+        const sesiList = [['1', 'Sesi 1'], ['2', 'Sesi 2'], ['3', 'Sesi 3 (pengganti/libur)']].filter(x => !usedSesi.has(x[0]));
+        if (!sesiList.length) {
+            wrap.innerHTML = '<div style="background:#dcfce7;color:#15803d;padding:16px;border-radius:10px;text-align:center;font-size:13px;font-weight:600;">✅ Semua sesi live hari ini sudah selesai. Sampai jumpa besok!</div>';
+            return;
+        }
+        const sesiOpts = sesiList.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('');
         const tokoOpts = this.toko.map(t => `<option value="${this._esc(t.nama_toko)}" data-platform="${this._esc(t.platform)}">${this._esc(t.nama_toko)}${t.platform ? ' (' + this._esc(t.platform) + ')' : ''}</option>`).join('');
         const cohostOpts = '<option value="">— tanpa co-host —</option>' + this.cohosts.map(c => `<option value="${this._esc(c.id)}">${this._esc(c.name)}</option>`).join('');
         wrap.innerHTML = `
@@ -293,7 +311,7 @@ const liveStreamer = {
             <h4 style="margin:0 0 14px;color:#16a34a;"><i class="fas fa-play-circle"></i> Mulai Sesi Live</h4>
             <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Sesi</label>
             <select id="ls-sesi" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:12px;">
-                <option value="1">Sesi 1</option><option value="2">Sesi 2</option><option value="3">Sesi 3 (pengganti/libur)</option>
+                ${sesiOpts}
             </select>
             <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Toko</label>
             <select id="ls-toko" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:12px;">${tokoOpts}</select>
@@ -305,7 +323,7 @@ const liveStreamer = {
             <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Co-host (opsional)</label>
             <select id="ls-cohost" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:12px;">${cohostOpts}</select>
             <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Quote Awal (opsional)</label>
-            <textarea id="ls-quote-mulai" rows="2" maxlength="200" placeholder="mis. target hari ini 20 closing" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:14px;font-family:inherit;font-size:13px;resize:vertical;"></textarea>
+            <textarea id="ls-quote-mulai" rows="2" maxlength="200" placeholder="Tulis quote / kata-kata motivasi (diundi tiap bulan)" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:14px;font-family:inherit;font-size:13px;resize:vertical;"></textarea>
             <button id="ls-start-btn" onclick="liveStreamer.doStart()" style="width:100%;background:#16a34a;color:#fff;border:none;padding:13px;border-radius:10px;cursor:pointer;font-weight:700;font-size:15px;"><i class="fas fa-video"></i> Mulai Live</button>
         </div>`;
     },
@@ -349,10 +367,8 @@ const liveStreamer = {
             </div>
             <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Jumlah Closing</label>
             <input type="number" id="ls-closing" min="0" value="0" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:12px;font-size:15px;">
-            <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Jumlah Penonton (opsional)</label>
-            <input type="number" id="ls-penonton" min="0" placeholder="0" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:12px;font-size:15px;">
             <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Quote Akhir (opsional)</label>
-            <textarea id="ls-quote-selesai" rows="2" maxlength="200" placeholder="mis. closing 18, kendala sinyal" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:14px;font-family:inherit;font-size:13px;resize:vertical;"></textarea>
+            <textarea id="ls-quote-selesai" rows="2" maxlength="200" placeholder="Tulis quote / kata-kata motivasi (diundi tiap bulan)" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:14px;font-family:inherit;font-size:13px;resize:vertical;"></textarea>
             <button id="ls-end-btn" onclick="liveStreamer.doEnd()" style="width:100%;background:#ef4444;color:#fff;border:none;padding:13px;border-radius:10px;cursor:pointer;font-weight:700;font-size:15px;"><i class="fas fa-stop-circle"></i> Selesai Live</button>
         </div>`;
     },
@@ -361,7 +377,6 @@ const liveStreamer = {
         if (!this.active) return;
         if (!this.location) { alert('⚠️ GPS belum siap. Tunggu lokasi muncul lalu coba lagi.'); this.getLocation(); return; }
         const closing = document.getElementById('ls-closing').value;
-        const penonton = document.getElementById('ls-penonton').value;
         const quote = document.getElementById('ls-quote-selesai').value.trim().substring(0, 200);
         const img = this.captureImage();
         const a = this._actor();
@@ -370,7 +385,7 @@ const liveStreamer = {
         try {
             const res = await api.post({
                 action: 'endLiveSession', id: this.active.id, actor_id: a.actor_id, actor_name: a.actor_name,
-                jumlah_closing: closing, jumlah_penonton: penonton, quote_selesai: quote,
+                jumlah_closing: closing, quote_selesai: quote,
                 lat: this.location.lat, lng: this.location.lng, location: this._locStr(), thumbnail: img.thumb
             });
             if (res && res.success) {
