@@ -256,13 +256,27 @@ const absensi = {
         const accColor = acc < 50 ? '#10b981' : (acc < 200 ? '#f59e0b' : '#ef4444');
         this.setLocStatus(`<i class="fas fa-map-marker-alt"></i> <span id="loc-name">${this.locationName || 'Memuat alamat...'}</span> <small style="color:${accColor}; margin-left:6px;">${accLabel}</small>`, '#10b981');
 
-        // Update nama lokasi (reverse geocoding) hanya 1x atau saat akurasi membaik signifikan
-        if (!this.locationName || this.locationName === 'Mencari lokasi...' || this._lastGeocodeAcc > acc * 2) {
-            await this.updateLocationName(this.location.lat, this.location.lng);
+        // Update nama lokasi (reverse geocoding) hanya 1x atau saat akurasi membaik signifikan.
+        // Retry juga jika geocode sebelumnya GAGAL (locationName masih placeholder / kosong).
+        if (this._needsGeocode() || this._lastGeocodeAcc > acc * 2) {
+            const ok = await this.updateLocationName(this.location.lat, this.location.lng);
             const nameEl = document.getElementById('loc-name');
             if (nameEl) nameEl.textContent = this.locationName || 'Lokasi terdeteksi';
-            this._lastGeocodeAcc = acc;
+            // Hanya kunci akurasi geocode kalau benar-benar dapat alamat (bukan fallback koordinat)
+            if (ok) this._lastGeocodeAcc = acc;
         }
+    },
+
+    // Placeholder yang TIDAK boleh tersimpan sebagai lokasi absen
+    _isPlaceholderLoc(s) {
+        const t = String(s || '').trim();
+        return !t || t === 'Mencari lokasi...' || t === 'Memuat alamat...' || t === 'Lokasi terdeteksi';
+    },
+
+    _needsGeocode() {
+        // Belum punya alamat asli (masih placeholder atau berupa koordinat fallback)
+        if (this._isPlaceholderLoc(this.locationName)) return true;
+        return /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(this.locationName);
     },
 
     _handleGpsError(err) {
@@ -289,12 +303,46 @@ const absensi = {
         );
     },
 
+    // Return true jika berhasil dapat ALAMAT (bukan fallback koordinat)
     async updateLocationName(lat, lng) {
+        const coordStr = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 7000); // jangan nge-hang
         try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=${lat}&lon=${lng}`,
+                { signal: ctrl.signal, headers: { 'Accept-Language': 'id' } }
+            );
+            if (!res.ok) throw new Error('http ' + res.status);
             const data = await res.json();
-            this.locationName = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        } catch (e) { this.locationName = `${lat.toFixed(4)}, ${lng.toFixed(4)}`; }
+            const name = this._formatAddress(data) || data.display_name;
+            if (name) { this.locationName = name; return true; }
+            this.locationName = coordStr;
+            return false;
+        } catch (e) {
+            this.locationName = coordStr;
+            return false;
+        } finally {
+            clearTimeout(timer);
+        }
+    },
+
+    // Ringkas alamat panjang Nominatim jadi "Desa, Kecamatan, Kabupaten" yang relevan
+    _formatAddress(data) {
+        const a = (data && data.address) || null;
+        if (!a) return '';
+        const parts = [
+            a.road || a.hamlet || a.neighbourhood,
+            a.village || a.suburb || a.town,
+            a.city_district || a.municipality || a.subdistrict,
+            a.county || a.city || a.regency,
+        ];
+        const seen = {};
+        const out = [];
+        parts.forEach(p => {
+            if (p && !seen[p]) { seen[p] = 1; out.push(p); }
+        });
+        return out.slice(0, 3).join(', ');
     },
 
     normalizeDateStr(input) {
@@ -485,12 +533,20 @@ const absensi = {
         this.setStatus("📤 Mengirim data ke server...");
 
         try {
+            // Jangan pernah simpan placeholder ("Mencari lokasi...") sebagai lokasi.
+            // Kalau alamat belum siap / gagal, pakai koordinat presisi penuh sebagai fallback.
+            const coordStr = `${this.location.lat.toFixed(6)}, ${this.location.lng.toFixed(6)}`;
+            const locStr = this._isPlaceholderLoc(this.locationName) ? coordStr : this.locationName;
+
             const payload = {
                 action: 'saveAttendance',
                 userId: auth.user.id,
                 userName: auth.user.name,
                 type: type,
-                location: this.locationName,
+                location: locStr,
+                lat: this.location.lat,
+                lng: this.location.lng,
+                accuracy: this.location.accuracy || '',
                 image: img.full,
                 thumbnail: img.thumb
             };
