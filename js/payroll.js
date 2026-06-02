@@ -266,9 +266,12 @@ const payroll = {
 
         // Potongan mangkir (hari tidak masuk tanpa izin/cuti approved) — hanya bulanan
         // Per_jam sudah otomatis: tidak hadir = jamKerjaTotal lebih kecil = gaji lebih kecil
+        // CATATAN: mangkir baru dihitung saat PERIODE SUDAH SELESAI. Selama periode berjalan
+        // (hari ini masih <= akhir periode), hari yang belum tiba TIDAK dihitung mangkir.
         let hariMangkir = 0;
         let potonganMangkir = 0;
-        if (!isPerJam) {
+        const periodeSelesai = new Date() > end;
+        if (!isPerJam && periodeSelesai) {
             hariMangkir = Math.max(0, hariKerjaPerBulan - hadirCount - hariCuti - hariIzin);
             potonganMangkir = Math.round(gajiHarian * hariMangkir);
         }
