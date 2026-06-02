@@ -7,11 +7,13 @@ const dashboard = {
     _chart: null,
 
     async init() {
-        // Karyawan Live Streamer: Home = ringkasan performa live, bukan dashboard absensi biasa
-        if (window.isLiveStreamer && auth.user && window.isLiveStreamer(auth.user) && window.liveStreamer) {
-            return liveStreamer.renderHome();
-        }
         await this.renderAll();
+        // Karyawan Live Streamer: sisipkan ringkasan performa live di atas.
+        // Kartu khusus absen (status, kuota, stats, streak, chart, gaji) sudah disembunyikan via .streamer-hide.
+        // Pengumuman, ulang tahun, quote, & pengajuan tetap tampil dari renderAll.
+        if (window.isLiveStreamer && auth.user && window.isLiveStreamer(auth.user) && window.liveStreamer) {
+            liveStreamer.renderHome();
+        }
     },
 
     _esc(s) {

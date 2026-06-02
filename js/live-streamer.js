@@ -99,9 +99,12 @@ const liveStreamer = {
     async renderHome() {
         const page = document.getElementById('page-dashboard');
         if (!page) return;
-        Array.from(page.children).forEach(c => { if (c.id !== 'live-home') c.style.display = 'none'; });
         let host = document.getElementById('live-home');
-        if (!host) { host = document.createElement('div'); host.id = 'live-home'; page.insertBefore(host, page.firstChild); }
+        if (!host) {
+            host = document.createElement('div'); host.id = 'live-home';
+            const anchor = document.getElementById('emp-welcome-card');
+            if (anchor) page.insertBefore(host, anchor); else page.insertBefore(host, page.firstChild);
+        }
         host.style.display = 'block';
         host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat performa live...</div>';
 
