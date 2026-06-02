@@ -365,7 +365,7 @@ const payroll = {
 
             return `
             <tr style="${rowStyle}">
-                <td style="padding:12px;">${lockIcon}<strong>${p.name}</strong><br><small style="color:${isPerJam ? '#6366f1' : '#64748b'};">${isPerJam ? 'PER JAM' : 'BULANAN'} · ID: ${p.id}</small></td>
+                <td style="padding:12px;">${lockIcon}<strong onclick="payroll.showSlip('${String(p.id).replace(/'/g,"\\'")}')" style="cursor:pointer; color:#2563eb; border-bottom:1px dotted #2563eb;" title="Klik untuk lihat detail gaji">${p.name}</strong> <i class="fas fa-receipt" style="color:#94a3b8; font-size:11px;"></i><br><small style="color:${isPerJam ? '#6366f1' : '#64748b'};">${isPerJam ? 'PER JAM' : 'BULANAN'} · ID: ${p.id}</small></td>
                 <td>${basisCell}</td>
                 <td style="text-align:center;">
                     ${p.hadir} Hari
@@ -755,8 +755,26 @@ const payroll = {
                     <tr><td style="padding:8px 0; color:#ef4444;">(-) DENDA TELAT (${data.menitTelat} Mnt)</td><td style="text-align:right; color:#ef4444;">- Rp ${data.dendaTelat.toLocaleString('id-ID')}</td></tr>
                     <tr><td style="padding:8px 0; color:#ef4444;">(-) POTONGAN BPJS</td><td style="text-align:right; color:#ef4444;">- Rp ${data.bpjs.toLocaleString('id-ID')}</td></tr>
                     `}
+                    ${Number(data.komisiLive || 0) > 0 ? `
+                    <tr><td style="padding:8px 0; color:#0f766e;">(+) KOMISI LIVE (${data.komisiLiveSesi || 0} sesi)</td><td style="text-align:right; color:#0f766e;">+ Rp ${Number(data.komisiLive).toLocaleString('id-ID')}</td></tr>
+                    ` : ''}
                     ${Number(data.bonusCustom || 0) > 0 ? `
                     <tr><td style="padding:8px 0; color:#854d0e;">(+) BONUS CUSTOM</td><td style="text-align:right; color:#854d0e;">+ Rp ${Number(data.bonusCustom).toLocaleString('id-ID')}</td></tr>
+                    ` : ''}
+                    ${Number(data.tunjBensinTerbayar || 0) > 0 ? `
+                    <tr><td style="padding:8px 0; color:#ea580c;">(+) TUNJANGAN BENSIN</td><td style="text-align:right; color:#ea580c;">+ Rp ${Number(data.tunjBensinTerbayar).toLocaleString('id-ID')}</td></tr>
+                    ` : ''}
+                    ${Number(data.tunjKost || 0) > 0 ? `
+                    <tr><td style="padding:8px 0; color:#ea580c;">(+) TUNJANGAN KOST</td><td style="text-align:right; color:#ea580c;">+ Rp ${Number(data.tunjKost).toLocaleString('id-ID')}</td></tr>
+                    ` : ''}
+                    ${Number(data.potonganIzin || 0) > 0 ? `
+                    <tr><td style="padding:8px 0; color:#ef4444;">(-) POTONGAN IZIN (${data.hariIzin || 0} hr)</td><td style="text-align:right; color:#ef4444;">- Rp ${Number(data.potonganIzin).toLocaleString('id-ID')}</td></tr>
+                    ` : ''}
+                    ${Number(data.potonganPulangCepat || 0) > 0 ? `
+                    <tr><td style="padding:8px 0; color:#ef4444;">(-) POTONGAN PULANG CEPAT (${data.hariPulangCepat || 0} hr)</td><td style="text-align:right; color:#ef4444;">- Rp ${Number(data.potonganPulangCepat).toLocaleString('id-ID')}</td></tr>
+                    ` : ''}
+                    ${Number(data.potonganMangkir || 0) > 0 ? `
+                    <tr><td style="padding:8px 0; color:#ef4444;">(-) POTONGAN MANGKIR (${data.hariMangkir || 0} hr)</td><td style="text-align:right; color:#ef4444;">- Rp ${Number(data.potonganMangkir).toLocaleString('id-ID')}</td></tr>
                     ` : ''}
 
                     <tr><td colspan="2"><hr style="border:0; border-top:2px solid #1e293b; margin:15px 0;"></td></tr>
