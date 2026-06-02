@@ -7,6 +7,10 @@ const dashboard = {
     _chart: null,
 
     async init() {
+        // Karyawan Live Streamer: Home = ringkasan performa live, bukan dashboard absensi biasa
+        if (window.isLiveStreamer && auth.user && window.isLiveStreamer(auth.user) && window.liveStreamer) {
+            return liveStreamer.renderHome();
+        }
         await this.renderAll();
     },
 

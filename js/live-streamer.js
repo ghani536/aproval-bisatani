@@ -68,17 +68,120 @@ const liveStreamer = {
     },
 
     // ---------- GPS ----------
+    _parseDT(s) {
+        if (!s) return null;
+        const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+        if (!m) { const d = new Date(s); return isNaN(d) ? null : d; }
+        return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+    },
+    // Timer = durasi sesi yang sedang berlangsung. Sebelum mulai live: 00:00:00.
     startClock() {
         if (this._clockTimer) clearInterval(this._clockTimer);
         const tick = () => {
             const el = document.getElementById('live-clock-2');
-            if (el) {
-                const n = new Date();
-                el.textContent = [n.getHours(), n.getMinutes(), n.getSeconds()].map(x => String(x).padStart(2, '0')).join(':');
+            if (!el) return;
+            const start = this.active && this.active.mulai_jam ? this._parseDT(this.active.mulai_jam) : null;
+            if (start) {
+                let sec = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));
+                const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+                el.textContent = [h, m, s].map(x => String(x).padStart(2, '0')).join(':');
+                el.style.color = '#ef4444';
+            } else {
+                el.textContent = '00:00:00';
+                el.style.color = '#1e293b';
             }
         };
         tick();
         this._clockTimer = setInterval(tick, 1000);
+    },
+
+    // Home khusus streamer: ringkasan performa live (sesi hari ini + total bulan berjalan)
+    async renderHome() {
+        const page = document.getElementById('page-dashboard');
+        if (!page) return;
+        Array.from(page.children).forEach(c => { if (c.id !== 'live-home') c.style.display = 'none'; });
+        let host = document.getElementById('live-home');
+        if (!host) { host = document.createElement('div'); host.id = 'live-home'; page.insertBefore(host, page.firstChild); }
+        host.style.display = 'block';
+        host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat performa live...</div>';
+
+        const a = this._actor();
+        let sessions = [];
+        try {
+            const res = await api.post({ action: 'getMyLiveSessions', userId: a.actor_id, actor_id: a.actor_id, bulan: this._bulanIni() });
+            sessions = (res && res.success) ? (res.data || []) : [];
+        } catch (e) {}
+        this.sessions = sessions;
+        this.active = sessions.find(s => String(s.status).toUpperCase() === 'BERLANGSUNG') || null;
+
+        const n = new Date();
+        const today = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+        const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][n.getMonth()];
+        const todaySessions = sessions.filter(s => s.tanggal === today);
+        const bySesi = {}; todaySessions.forEach(s => { bySesi[String(s.sesi)] = s; });
+        const done = sessions.filter(s => String(s.status).toUpperCase() === 'SELESAI');
+        let totClosing = 0, totKomisi = 0, totMenit = 0;
+        done.forEach(s => { totClosing += Number(s.jumlah_closing) || 0; totKomisi += Number(s.komisi_host) || 0; totMenit += Number(s.durasi_menit) || 0; });
+        const closingHariIni = todaySessions.reduce((x, s) => x + (Number(s.jumlah_closing) || 0), 0);
+        const nama = (auth.user && (auth.user.name || auth.user.nama) || 'Streamer').split(' ')[0];
+
+        const sesiRows = ['1', '2', '3'].map(num => {
+            const s = bySesi[num];
+            const isCadangan = num === '3';
+            if (!s) {
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #f1f5f9;">
+                    <div style="font-size:13px;color:#94a3b8;">Sesi ${num}${isCadangan ? ' (pengganti)' : ''}</div>
+                    <div style="font-size:12px;color:#cbd5e1;">belum live</div></div>`;
+            }
+            const berlangsung = String(s.status).toUpperCase() === 'BERLANGSUNG';
+            const badge = berlangsung
+                ? '<span style="font-size:10px;background:#fee2e2;color:#b91c1c;padding:1px 7px;border-radius:4px;">LIVE</span>'
+                : (String(s.disetujui).toUpperCase() === 'APPROVED' ? '<span style="font-size:10px;background:#dcfce7;color:#15803d;padding:1px 7px;border-radius:4px;">ACC</span>' : '<span style="font-size:10px;background:#fef9c3;color:#a16207;padding:1px 7px;border-radius:4px;">menunggu</span>');
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #f1f5f9;">
+                <div>
+                    <div style="font-size:13px;font-weight:600;color:#1e293b;">Sesi ${num} · ${this._esc(s.toko)}</div>
+                    <div style="font-size:11px;color:#64748b;">${this._esc(s.lokasi_tipe)}${berlangsung ? '' : ' · ' + this._fmtDur(s.durasi_menit)}${s.cohost_nama ? ' · co: ' + this._esc(s.cohost_nama) : ''}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:15px;font-weight:700;color:#0f766e;">${berlangsung ? '—' : (Number(s.jumlah_closing) || 0)}<small style="font-size:10px;color:#94a3b8;font-weight:500;"> closing</small></div>
+                    ${badge}
+                </div></div>`;
+        }).join('');
+
+        host.innerHTML = `
+        <div style="background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;padding:18px 20px;border-radius:14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <div style="flex:1;min-width:0;">
+                <h2 style="margin:0;font-size:18px;">Halo, ${this._esc(nama)}! 📹</h2>
+                <p style="margin:4px 0 0;font-size:12px;opacity:0.9;">Ringkasan performa live ${namaBulan}</p>
+            </div>
+            <div style="font-size:40px;opacity:0.9;flex-shrink:0;"><i class="fas fa-video"></i></div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-bottom:14px;">
+            <div style="flex:1;background:#fff;border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Closing Hari Ini</div>
+                <div style="font-size:26px;font-weight:800;color:#ef4444;margin-top:4px;">${closingHariIni}</div>
+            </div>
+            <div style="flex:1;background:#fff;border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;">Sesi Hari Ini</div>
+                <div style="font-size:26px;font-weight:800;color:#1e293b;margin-top:4px;">${todaySessions.length}<small style="font-size:12px;color:#94a3b8;font-weight:500;">/3</small></div>
+            </div>
+        </div>
+
+        <div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+            <div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:6px;"><i class="fas fa-list-ol" style="color:#ef4444;"></i> Sesi Hari Ini</div>
+            ${sesiRows}
+            <button onclick="router.navigate('live-streamer')" style="width:100%;margin-top:12px;background:#ef4444;color:#fff;border:none;padding:11px;border-radius:10px;cursor:pointer;font-weight:700;font-size:14px;"><i class="fas fa-video"></i> Buka Absen Live</button>
+        </div>
+
+        <div style="background:linear-gradient(135deg,#0891b2,#0e7490);color:#fff;border-radius:12px;padding:16px;margin-bottom:14px;">
+            <div style="font-size:11px;opacity:0.9;font-weight:700;text-transform:uppercase;margin-bottom:10px;"><i class="fas fa-chart-line"></i> Total Bulan ${namaBulan}</div>
+            <div style="display:flex;justify-content:space-between;gap:8px;text-align:center;">
+                <div style="flex:1;"><div style="font-size:22px;font-weight:800;">${totClosing}</div><div style="font-size:10px;opacity:0.85;">Closing</div></div>
+                <div style="flex:1;"><div style="font-size:22px;font-weight:800;">${this._fmtDur(totMenit)}</div><div style="font-size:10px;opacity:0.85;">Durasi</div></div>
+                <div style="flex:1;"><div style="font-size:18px;font-weight:800;">Rp ${totKomisi.toLocaleString('id-ID')}</div><div style="font-size:10px;opacity:0.85;">Komisi (bagian saya)</div></div>
+            </div>
+        </div>`;
     },
     _setLoc(html, color) {
         const el = document.getElementById('live-loc-text');
