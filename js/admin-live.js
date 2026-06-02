@@ -187,6 +187,7 @@ const adminLive = {
                 <td style="padding:8px 6px;font-size:12px;">${this._esc(s.nama)}</td>
                 <td style="padding:8px 6px;font-size:12px;">${s.cohost_nama ? this._esc(s.cohost_nama) : '<span style="color:#cbd5e1;">—</span>'}</td>
                 <td style="padding:8px 6px;font-size:12px;white-space:nowrap;">${lokasiCell}</td>
+                <td style="padding:8px 6px;font-size:11px;white-space:nowrap;">${this._jam(s.mulai_jam) || '—'} <span style="color:#cbd5e1;">→</span> ${this._jam(s.selesai_jam) || '—'}</td>
                 <td style="padding:8px 6px;font-size:12px;">${this._esc(s.toko)}</td>
                 <td style="padding:8px 6px;font-size:12px;text-align:center;">${this._fmtDur(s.durasi_menit)}</td>
                 <td style="padding:8px 6px;font-size:12px;text-align:center;font-weight:600;">${s.jumlah_closing}</td>
@@ -202,12 +203,13 @@ const adminLive = {
                 <div style="flex:1;min-width:90px;background:#fdf4ff;border-radius:9px;padding:10px 12px;"><div style="font-size:11px;color:#a855f7;">Total Durasi</div><div style="font-size:16px;font-weight:700;color:#7e22ce;">${this._fmtDur(totMenit)}</div></div>
             </div>
             <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;min-width:760px;">
+            <table style="width:100%;border-collapse:collapse;min-width:880px;">
                 <thead><tr style="background:#f8fafc;text-align:left;">
                     <th style="padding:8px 6px;font-size:11px;color:#64748b;">Tgl/Sesi</th>
                     <th style="padding:8px 6px;font-size:11px;color:#64748b;">Host</th>
                     <th style="padding:8px 6px;font-size:11px;color:#64748b;">Co-host</th>
                     <th style="padding:8px 6px;font-size:11px;color:#64748b;">Tempat</th>
+                    <th style="padding:8px 6px;font-size:11px;color:#64748b;">Jam (Mulai→Selesai)</th>
                     <th style="padding:8px 6px;font-size:11px;color:#64748b;">Toko</th>
                     <th style="padding:8px 6px;font-size:11px;color:#64748b;text-align:center;">Durasi</th>
                     <th style="padding:8px 6px;font-size:11px;color:#64748b;text-align:center;">Closing</th>
@@ -224,6 +226,10 @@ const adminLive = {
         if (n >= 1000) return (n / 1000).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + 'rb';
         return String(n);
     },
+    _jam(dt) {
+        const m = String(dt || '').match(/\d{4}-\d{2}-\d{2}[ T](\d{2}:\d{2})/);
+        return m ? m[1] : '';
+    },
     async toggleApprove(id, currentlyApproved) {
         const a = this._actor();
         try {
@@ -239,7 +245,6 @@ const adminLive = {
         if (!s) return;
         document.getElementById('le-id').value = s.id;
         document.getElementById('le-closing').value = s.jumlah_closing || 0;
-        document.getElementById('le-penonton').value = s.jumlah_penonton || 0;
         document.getElementById('le-info').textContent = `${s.tanggal} · Sesi ${s.sesi} · ${s.nama} · ${s.toko}${s.cohost_nama ? ' (co-host: ' + s.cohost_nama + ')' : ''}`;
         this._editTarget = s;
         this._updateEditPreview();
@@ -260,10 +265,9 @@ const adminLive = {
     async saveEdit() {
         const id = document.getElementById('le-id').value;
         const closing = document.getElementById('le-closing').value;
-        const penonton = document.getElementById('le-penonton').value;
         const a = this._actor();
         try {
-            const res = await api.post({ action: 'editLiveSession', id: id, jumlah_closing: closing, jumlah_penonton: penonton, actor_id: a.actor_id, actor_name: a.actor_name });
+            const res = await api.post({ action: 'editLiveSession', id: id, jumlah_closing: closing, actor_id: a.actor_id, actor_name: a.actor_name });
             if (res && res.success) { this.closeModal('modal-live-edit'); this.loadSessions(); }
             else alert('❌ ' + ((res && res.error) || 'gagal simpan'));
         } catch (e) { alert('❌ Error: ' + e.message); }
