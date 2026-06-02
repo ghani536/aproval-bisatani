@@ -56,15 +56,16 @@ const payroll = {
     },
     computeFinalTotal(p) {
         const bonus = parseFloat(p.bonusCustom || 0);
+        const komisiLive = parseFloat(p.komisiLive || 0);
         const bensin = parseFloat(p.tunjBensinTerbayar || 0);
         const kost = parseFloat(p.tunjKost || 0);
         const potIzin = parseFloat(p.potonganIzin || 0);
         const potPulCepat = parseFloat(p.potonganPulangCepat || 0);
         const potMangkir = parseFloat(p.potonganMangkir || 0);
         if (p.jenis_gaji === 'per_jam') {
-            return p.basisGaji - p.bpjs + bonus + bensin + kost;
+            return p.basisGaji - p.bpjs + bonus + komisiLive + bensin + kost;
         }
-        return (p.gapok + p.bonusLembur + bonus + bensin + kost) - (p.bpjs + p.dendaTelat + potIzin + potPulCepat + potMangkir);
+        return (p.gapok + p.bonusLembur + bonus + komisiLive + bensin + kost) - (p.bpjs + p.dendaTelat + potIzin + potPulCepat + potMangkir);
     },
 
     async calculate() {
@@ -105,10 +106,23 @@ const payroll = {
             const endDate = new Date(year, month, endDay, 23, 59, 59);
 
             this.calculatedData = this.employees.map(emp => this.calculateSingleEmployee(emp, startDate, endDate));
-            // Apply bonus custom dari localStorage ke calculatedData + recalc total
+
+            // Rekap Komisi Live (streamer) untuk periode ini — hanya sesi yang sudah di-ACC
+            const fmtYmd = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+            let komisiMap = {};
+            try {
+                const actorId = (typeof auth !== 'undefined' && auth.user && auth.user.id) || '';
+                const resKom = await api.post({ action: 'getLiveKomisiByPeriode', start: fmtYmd(startDate), end: fmtYmd(endDate), actor_id: actorId });
+                if (resKom && resKom.success) komisiMap = resKom.data || {};
+            } catch (e) { /* abaikan — komisi 0 */ }
+
+            // Apply bonus custom dari localStorage + komisi live ke calculatedData + recalc total
             const bonusMap = this.loadBonusMap();
             this.calculatedData.forEach(row => {
                 row.bonusCustom = parseFloat(bonusMap[row.id] || 0);
+                const k = komisiMap[String(row.id)];
+                row.komisiLive = k ? (Number(k.komisi) || 0) : 0;
+                row.komisiLiveSesi = k ? (Number(k.sesi) || 0) : 0;
                 row.totalGaji = this.computeFinalTotal(row);
             });
             this.renderTable(this.calculatedData);
@@ -303,6 +317,8 @@ const payroll = {
             potonganPulangCepat: potonganPulangCepat,
             hariMangkir: hariMangkir,
             potonganMangkir: potonganMangkir,
+            komisiLive: 0,
+            komisiLiveSesi: 0,
             totalGaji: totalGaji
         };
     },
@@ -361,7 +377,10 @@ const payroll = {
                 <td style="color:#10b981; font-weight:600;">${isPerJam ? '<small>(incl. di basis)</small>' : '+' + p.bonusLembur.toLocaleString('id-ID')}</td>
                 <td style="color:#ef4444;">${isPerJam ? '<small>n/a</small>' : '-' + p.dendaTelat.toLocaleString('id-ID') + '<br><small>(' + p.menitTelat + ' m)</small>'}</td>
                 <td style="color:#ef4444;">-${p.bpjs.toLocaleString('id-ID')}</td>
-                <td style="background:${isSent ? '#f1f5f9' : '#fef9c3'}; padding:6px;">${bonusInput}</td>
+                <td style="background:${isSent ? '#f1f5f9' : '#fef9c3'}; padding:6px;">
+                    ${Number(p.komisiLive || 0) > 0 ? `<div style="font-size:10px; color:#0f766e; font-weight:700; text-align:right; margin-bottom:4px;">🎥 Komisi Live: +${Number(p.komisiLive).toLocaleString('id-ID')}<br><span style="color:#94a3b8; font-weight:500;">(${p.komisiLiveSesi || 0} sesi · otomatis)</span></div>` : ''}
+                    ${bonusInput}
+                </td>
                 <td data-total-id="${p.id}" style="background:#f0fdf4; font-weight:700; color:#166534;">
                     Rp ${p.totalGaji.toLocaleString('id-ID')}
                     ${(Number(p.tunjBensinTerbayar || 0) + Number(p.tunjKost || 0)) > 0
@@ -583,6 +602,8 @@ const payroll = {
                     jamKerjaTotal: d.jamKerjaTotal,
                     basisGaji: d.basisGaji,
                     bonusCustom: d.bonusCustom || 0,
+                    komisiLive: d.komisiLive || 0,
+                    komisiLiveSesi: d.komisiLiveSesi || 0,
                     tunjBensinFull: d.tunjBensinFull || 0,
                     tunjBensinTerbayar: d.tunjBensinTerbayar || 0,
                     tunjKost: d.tunjKost || 0,
