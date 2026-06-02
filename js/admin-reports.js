@@ -44,7 +44,10 @@ const adminReports = {
             }
             
             if (resEmp && resEmp.success) {
-                this.employees = resEmp.data || [];
+                // Keluarkan karyawan Live Streamer — dipantau terpisah di menu Live Streamer
+                const allEmp = resEmp.data || [];
+                this.streamerIds = new Set(allEmp.filter(e => window.isLiveStreamer && window.isLiveStreamer(e)).map(e => String(e.id)));
+                this.employees = allEmp.filter(e => !this.streamerIds.has(String(e.id)));
                 this.populateEmployeeFilter();
             }
             this.renderTable();
@@ -112,8 +115,10 @@ async updateApproval(rowId, status) {
         const empId = document.getElementById('report-employee-filter')?.value;
         const search = document.getElementById('report-search')?.value.toLowerCase();
 
+        const streamerIds = this.streamerIds || new Set();
         const filtered = this.allAttendance.filter(log => {
             if (!log.timestamp) return false;
+            if (streamerIds.has(String(log.userId))) return false; // streamer dipantau di menu Live Streamer
             const logDate = String(log.timestamp).substring(0, 10);
             const matchDate = (!start || !end) ? true : (logDate >= start && logDate <= end);
             const matchType = !type || log.type === type;
