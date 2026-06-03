@@ -16,39 +16,38 @@ const payroll = {
         if (monthInput) monthInput.value = new Date().getMonth();
     },
 
-    // Bonus custom per (tahun, bulan, empId) disimpan di localStorage
-    bonusKey(year, month) {
-        return `bisatani_bonus_${year}_${month}`;
+    // Bonus custom per (tahun, bulan, userId) disimpan di SHEET (Payroll_Bonus),
+    // permanen & konsisten antar device/admin (sebelumnya di localStorage).
+    _periodeBulanTahun() {
+        return {
+            bulan: parseInt(document.getElementById('payroll-month').value),
+            tahun: parseInt(document.getElementById('payroll-year').value)
+        };
     },
-    loadBonusMap() {
+    async loadBonusMap() {
         try {
-            const month = parseInt(document.getElementById('payroll-month').value);
-            const year = parseInt(document.getElementById('payroll-year').value);
-            const raw = localStorage.getItem(this.bonusKey(year, month));
-            return raw ? JSON.parse(raw) : {};
+            const { bulan, tahun } = this._periodeBulanTahun();
+            const a = (typeof auth !== 'undefined' && auth.user) || {};
+            const res = await api.post({ action: 'getPayrollBonus', bulan: bulan, tahun: tahun, actor_id: a.id });
+            return (res && res.success) ? (res.data || {}) : {};
         } catch (e) { return {}; }
     },
-    saveBonusMap(map) {
-        try {
-            const month = parseInt(document.getElementById('payroll-month').value);
-            const year = parseInt(document.getElementById('payroll-year').value);
-            localStorage.setItem(this.bonusKey(year, month), JSON.stringify(map));
-        } catch (e) {}
-    },
-    setBonus(empId, amount) {
-        const map = this.loadBonusMap();
+    async setBonus(empId, amount) {
         const num = parseFloat(String(amount).replace(/[^\d.-]/g, '')) || 0;
-        if (num > 0) map[empId] = num;
-        else delete map[empId];
-        this.saveBonusMap(map);
-        // Update calculated data + total
+        const { bulan, tahun } = this._periodeBulanTahun();
+        const a = (typeof auth !== 'undefined' && auth.user) || {};
+        // Update UI optimistik dulu (responsif)
         const row = this.calculatedData.find(d => String(d.id) === String(empId));
         if (row) {
             row.bonusCustom = num;
             row.totalGaji = this.computeFinalTotal(row);
-            // Re-render only this row's total cell (in-place update)
             this.refreshTotalCell(empId, row.totalGaji);
         }
+        // Simpan permanen ke sheet
+        try {
+            const res = await api.post({ action: 'savePayrollBonus', userId: empId, bulan: bulan, tahun: tahun, nominal: num, actor_id: a.id, actor_name: a.name || a.nama });
+            if (!res || !res.success) alert('❌ Bonus gagal tersimpan: ' + ((res && res.error) || 'coba lagi'));
+        } catch (e) { alert('❌ Error simpan bonus: ' + e.message); }
     },
     refreshTotalCell(empId, total) {
         const cell = document.querySelector(`[data-total-id="${empId}"]`);
@@ -116,8 +115,8 @@ const payroll = {
                 if (resKom && resKom.success) komisiMap = resKom.data || {};
             } catch (e) { /* abaikan — komisi 0 */ }
 
-            // Apply bonus custom dari localStorage + komisi live ke calculatedData + recalc total
-            const bonusMap = this.loadBonusMap();
+            // Apply bonus custom dari sheet + komisi live ke calculatedData + recalc total
+            const bonusMap = await this.loadBonusMap();
             this.calculatedData.forEach(row => {
                 row.bonusCustom = parseFloat(bonusMap[row.id] || 0);
                 const k = komisiMap[String(row.id)];
