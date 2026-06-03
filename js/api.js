@@ -16,17 +16,46 @@ const api = {
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(data)
             });
-            
-            const result = await response.json();
-            return result;
+
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (parseErr) {
+                // POST mengembalikan non-JSON (gangguan POST sisi Google) → fallback ke GET
+                console.warn('POST non-JSON, fallback GET:', data.action);
+                const viaGet = await this._postViaGet(data);
+                if (viaGet) return viaGet;
+                throw parseErr;
+            }
         } catch (error) {
             console.error('POST Error:', error);
+            // Coba jalur GET sekali lagi (mis. POST diblokir / network)
+            try {
+                const viaGet = await this._postViaGet(data);
+                if (viaGet) return viaGet;
+            } catch (e) { /* lanjut ke failsafe */ }
             // FAILSAFE: Jika kirim ABSEN tapi response JSON diblokir (Google Redirect)
             if (data.action === 'saveAttendance' || data.action === 'saveEmployee') {
-                return { success: true }; 
+                return { success: true };
             }
             return { success: false, error: 'Server Sibuk, Coba Lagi' };
         }
+    },
+
+    // Fallback: kirim payload via GET saat POST bermasalah. Nilai sangat besar
+    // (mis. foto base64) di-skip agar URL tidak kepanjangan — absen tetap tersimpan.
+    async _postViaGet(data) {
+        let url = `${API_BASE_URL}?_t=${Date.now()}`;
+        for (let key in data) {
+            const v = data[key];
+            if (v === undefined || v === null) continue;
+            const s = (typeof v === 'object') ? JSON.stringify(v) : String(v);
+            if (s.length > 6000) continue; // skip foto base64 / data besar
+            url += `&${encodeURIComponent(key)}=${encodeURIComponent(s)}`;
+        }
+        const res = await fetch(url, { method: 'GET', cache: 'no-store' });
+        const text = await res.text();
+        try { return JSON.parse(text); } catch (e) { return null; }
     },
 
     // 2. FUNGSI GET (KHUSUS TARIK DATA: Payroll, Login, Status, Settings)
