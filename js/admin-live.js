@@ -26,6 +26,20 @@ const adminLive = {
 
     closeModal(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; },
 
+    // Badge notif sidebar: jumlah sesi SELESAI yang belum di-ACC
+    async refreshBadge() {
+        try {
+            const a = this._actor();
+            if (!a.actor_id) return;
+            const res = await api.post({ action: 'getLivePendingCount', actor_id: a.actor_id });
+            const badge = document.getElementById('live-approval-badge');
+            if (!badge) return;
+            const n = (res && res.success) ? Number(res.count) || 0 : 0;
+            if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.style.display = 'inline-block'; }
+            else badge.style.display = 'none';
+        } catch (e) { /* silent */ }
+    },
+
     init() {
         // Default rentang tanggal = bulan berjalan
         const n = new Date();
@@ -38,6 +52,7 @@ const adminLive = {
         this.loadRate();
         this.loadSessions();
         this.loadToko();
+        this.refreshBadge();
     },
 
     switchTab(tab) {
@@ -153,6 +168,7 @@ const adminLive = {
             this.sessions = res.data || [];
             this.rate = Number(res.rate) || this.rate;
             this._renderRekap();
+            this.refreshBadge();
         } catch (e) { wrap.innerHTML = `<div style="color:#ef4444;padding:20px;">Error: ${e.message}</div>`; }
     },
     _mapsLink(lat, lng) {

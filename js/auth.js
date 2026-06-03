@@ -152,6 +152,7 @@ const auth = {
                 setTimeout(() => {
                     if (window.adminApproval) adminApproval.refreshBadgeOnly();
                     if (window.adminPengajuan) adminPengajuan.preloadBadge();
+                    if (window.adminLive) adminLive.refreshBadge();
                 }, 1000);
             } else {
                 if (adminMenu) adminMenu.classList.add('hidden');
