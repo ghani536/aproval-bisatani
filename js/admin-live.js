@@ -179,9 +179,11 @@ const adminLive = {
             const komisiTxt = s.cohost_nama
                 ? `${this._rupiah(s.komisi)}<br><small style="color:#64748b;">@${this.numShort(s.komisi_host)} + co ${this.numShort(s.komisi_cohost)}</small>`
                 : this._rupiah(s.komisi);
-            const actions = berlangsung ? '' : `
+            const delBtn = `<button onclick="adminLive.deleteSession('${this._esc(s.id)}')" title="Hapus sesi" style="background:#fee2e2;color:#dc2626;border:none;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;"><i class="fas fa-trash"></i></button>`;
+            const editApprove = berlangsung ? '' : `
                 <button onclick="adminLive.openEditModal('${this._esc(s.id)}')" title="Edit closing" style="background:#dbeafe;color:#1e40af;border:none;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;"><i class="fas fa-edit"></i></button>
                 <button onclick="adminLive.toggleApprove('${this._esc(s.id)}', ${approved})" title="${approved ? 'Batalkan ACC' : 'Setujui'}" style="background:${approved ? '#fef3c7' : '#dcfce7'};color:${approved ? '#92400e' : '#15803d'};border:none;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;"><i class="fas fa-${approved ? 'undo' : 'check'}"></i></button>`;
+            const actions = editApprove + ' ' + delBtn;
             return `<tr style="border-bottom:1px solid #f1f5f9;">
                 <td style="padding:8px 6px;font-size:12px;white-space:nowrap;">${this._esc(s.tanggal)}<br><small style="color:#94a3b8;">Sesi ${this._esc(s.sesi)}</small></td>
                 <td style="padding:8px 6px;font-size:12px;">${this._esc(s.nama)}</td>
@@ -236,6 +238,17 @@ const adminLive = {
             const res = await api.post({ action: 'approveLiveSession', id: id, disetujui: currentlyApproved ? 'PENDING' : 'APPROVED', actor_id: a.actor_id, actor_name: a.actor_name });
             if (res && res.success) this.loadSessions();
             else alert('❌ ' + ((res && res.error) || 'gagal'));
+        } catch (e) { alert('❌ Error: ' + e.message); }
+    },
+    async deleteSession(id) {
+        const s = this.sessions.find(x => String(x.id) === String(id));
+        const info = s ? `${s.tanggal} · Sesi ${s.sesi} · ${s.nama} · ${s.toko}` : '';
+        if (!confirm('Hapus sesi live ini?\n\n' + info + '\n\nData & komisi sesi ini akan dihapus permanen.')) return;
+        const a = this._actor();
+        try {
+            const res = await api.post({ action: 'deleteLiveSession', id: id, actor_id: a.actor_id, actor_name: a.actor_name });
+            if (res && res.success) this.loadSessions();
+            else alert('❌ ' + ((res && res.error) || 'gagal hapus'));
         } catch (e) { alert('❌ Error: ' + e.message); }
     },
 
