@@ -101,15 +101,34 @@ const kpiSaya = {
             inputHtml += `<div style="background:#f8fafc;padding:7px 11px;border-radius:6px;font-weight:700;font-size:12px;color:#334155;margin:10px 0 8px;">${this._esc(area)}</div>`;
             groups[area].forEach(it => {
                 const val = this._valueFor(it.id, this.tanggal);
-                const inputAttr = isToday
-                    ? `onchange="kpiSaya.saveItem('${this._esc(it.id)}', this.value)" style="width:80px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;text-align:center;font-size:15px;"`
-                    : `readonly style="width:80px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;text-align:center;font-size:15px;background:#f8fafc;color:#94a3b8;"`;
+                // target 1 = indikator biner (Sudah/Belum); target > 1 = hitungan angka
+                const isBiner = Number(it.target) === 1;
+                const id = this._esc(it.id);
+                let control;
+                if (isBiner) {
+                    if (isToday) {
+                        control = `<select onchange="kpiSaya.saveItem('${id}', this.value)" id="kpi-in-${id}" style="width:110px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;background:#fff;">
+                            <option value="" ${val === '' ? 'selected' : ''}>— pilih —</option>
+                            <option value="1" ${val === 1 ? 'selected' : ''}>✓ Sudah</option>
+                            <option value="0" ${val === 0 ? 'selected' : ''}>✗ Belum</option>
+                        </select>`;
+                    } else {
+                        const txt = val === 1 ? '✓ Sudah' : (val === 0 ? '✗ Belum' : '—');
+                        const tc = val === 1 ? '#16a34a' : (val === 0 ? '#dc2626' : '#94a3b8');
+                        control = `<span style="width:110px;text-align:center;font-size:13px;font-weight:600;color:${tc};">${txt}</span>`;
+                    }
+                } else {
+                    const inputAttr = isToday
+                        ? `onchange="kpiSaya.saveItem('${id}', this.value)" style="width:80px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;text-align:center;font-size:15px;"`
+                        : `readonly style="width:80px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;text-align:center;font-size:15px;background:#f8fafc;color:#94a3b8;"`;
+                    control = `<input type="number" min="0" step="any" value="${val}" placeholder="${isToday ? '0' : '-'}" id="kpi-in-${id}" ${inputAttr}>`;
+                }
                 inputHtml += `<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;">
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:13px;font-weight:600;color:#1e293b;">${this._esc(it.indikator)}</div>
                         <div style="font-size:11px;color:#94a3b8;">Target: ${this._esc(it.target)} ${this._esc(it.satuan)} · ${this._esc(it.periode_target || it.periode)}</div>
                     </div>
-                    <input type="number" min="0" step="any" value="${val}" placeholder="${isToday ? '0' : '-'}" id="kpi-in-${this._esc(it.id)}" ${inputAttr}>
+                    ${control}
                 </div>`;
             });
         });
