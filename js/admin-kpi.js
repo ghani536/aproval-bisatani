@@ -24,7 +24,7 @@ const adminKpi = {
     },
 
     async init() {
-        this.switchTab(this.currentTab || 'employee');
+        this.switchTab(this.currentTab || 'ringkasan');
         await this._loadEmployees();
         await this._loadDivisiList(this.currentDivisi);
         this.loadTemplates();
@@ -32,13 +32,72 @@ const adminKpi = {
 
     switchTab(tab) {
         this.currentTab = tab;
-        document.getElementById('kpi-tab-employee').style.display = tab === 'employee' ? 'block' : 'none';
-        document.getElementById('kpi-tab-template').style.display = tab === 'template' ? 'block' : 'none';
-        const be = document.getElementById('kpi-tabbtn-employee');
-        const bt = document.getElementById('kpi-tabbtn-template');
-        const on = (b) => { b.style.borderBottomColor = '#7c3aed'; b.style.color = '#7c3aed'; b.style.fontWeight = '700'; };
-        const off = (b) => { b.style.borderBottomColor = 'transparent'; b.style.color = '#64748b'; b.style.fontWeight = '600'; };
-        if (tab === 'employee') { on(be); off(bt); } else { on(bt); off(be); }
+        const tabs = ['ringkasan', 'employee', 'template'];
+        tabs.forEach(t => {
+            const pane = document.getElementById('kpi-tab-' + t);
+            if (pane) pane.style.display = t === tab ? 'block' : 'none';
+            const btn = document.getElementById('kpi-tabbtn-' + t);
+            if (btn) {
+                const on = t === tab;
+                btn.style.borderBottomColor = on ? '#7c3aed' : 'transparent';
+                btn.style.color = on ? '#7c3aed' : '#64748b';
+                btn.style.fontWeight = on ? '700' : '600';
+            }
+        });
+        if (tab === 'ringkasan') this.loadRingkasan();
+    },
+
+    _bulanIni() { const n = new Date(); return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0'); },
+
+    // ---------- RINGKASAN NILAI (semua karyawan, 1 pintu) ----------
+    async loadRingkasan() {
+        const wrap = document.getElementById('kpi-ringkasan-content');
+        if (!wrap) return;
+        wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;"><i class="fas fa-sync fa-spin"></i> Memuat nilai semua karyawan...</div>';
+        const a = this._actor();
+        const bulan = this._bulanIni();
+        if (!this.employees || !this.employees.length) await this._loadEmployees();
+        const emps = (this.employees || []).filter(e => !['admin', 'superadmin'].includes(String(e.role || '').toLowerCase()));
+        try {
+            const results = await Promise.all(emps.map(e =>
+                api.post({ action: 'getKpiScore', userId: e.id, actor_id: a.actor_id, bulan: bulan })
+                    .then(r => ({ emp: e, score: (r && r.success) ? r : null }))
+                    .catch(() => ({ emp: e, score: null }))
+            ));
+            const rows = results.filter(x => x.score && (x.score.items || []).length > 0)
+                .map(x => ({ id: x.emp.id, name: x.emp.name, dept: x.emp.department || '-', jumlah: x.score.items.length, total: Number(x.score.total) || 0, totalBobot: x.score.totalBobot }))
+                .sort((p, q) => q.total - p.total);
+            if (!rows.length) { wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;">Belum ada karyawan dengan KPI. Assign dulu di tab "Per Karyawan".</div>'; return; }
+            const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][parseInt(bulan.substring(5, 7)) - 1];
+            wrap.innerHTML = `
+                <p style="color:#64748b;font-size:13px;margin:0 0 12px;">Skor KPI semua karyawan — <b>${namaBulan}</b>. Klik nama untuk lihat detail.</p>
+                <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:480px;">
+                <thead><tr style="background:#f8fafc;text-align:left;">
+                    <th style="padding:9px 8px;font-size:11px;color:#64748b;">#</th>
+                    <th style="padding:9px 8px;font-size:11px;color:#64748b;">Karyawan</th>
+                    <th style="padding:9px 8px;font-size:11px;color:#64748b;">Divisi</th>
+                    <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:center;">Indikator</th>
+                    <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:right;">Skor</th>
+                </tr></thead><tbody>
+                ${rows.map((r, i) => {
+                const c = r.total >= 90 ? '#16a34a' : (r.total >= 70 ? '#f59e0b' : '#ef4444');
+                return `<tr style="border-bottom:1px solid #f1f5f9;cursor:pointer;" onclick="adminKpi.openDetail('${this._esc(r.id)}')">
+                        <td style="padding:9px 8px;font-size:12px;color:#94a3b8;">${i + 1}</td>
+                        <td style="padding:9px 8px;font-size:13px;font-weight:600;color:#2563eb;border-bottom:1px dotted #cbd5e1;">${this._esc(r.name)}</td>
+                        <td style="padding:9px 8px;font-size:12px;color:#64748b;">${this._esc(r.dept)}</td>
+                        <td style="padding:9px 8px;font-size:12px;text-align:center;">${r.jumlah}</td>
+                        <td style="padding:9px 8px;font-size:15px;font-weight:800;color:${c};text-align:right;">${Math.round(r.total)}%</td>
+                    </tr>`;
+            }).join('')}
+                </tbody></table></div>`;
+        } catch (e) { wrap.innerHTML = `<div style="color:#ef4444;padding:20px;">Error: ${e.message}</div>`; }
+    },
+
+    openDetail(userId) {
+        this.switchTab('employee');
+        const sel = document.getElementById('kpi-emp-select');
+        if (sel) sel.value = userId;
+        this.loadEmployeeKpi();
     },
 
     closeModal(id) {
