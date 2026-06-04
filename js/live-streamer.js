@@ -298,7 +298,7 @@ const liveStreamer = {
         // Sesi yang sudah dipakai hari ini tidak bisa dipilih lagi
         const today = this._today();
         const usedSesi = new Set((this.sessions || []).filter(s => s.tanggal === today).map(s => String(s.sesi)));
-        const sesiList = [['1', 'Sesi 1'], ['2', 'Sesi 2'], ['3', 'Sesi 3 (pengganti/libur)'], ['4', 'Sesi 4 (tambahan jam — sukarela)']].filter(x => !usedSesi.has(x[0]));
+        const sesiList = [['1', 'Sesi 1'], ['2', 'Sesi 2'], ['3', 'Sesi 3 (pengganti/libur)'], ['4', 'Sesi 4 (tambahan jam — khusus)']].filter(x => !usedSesi.has(x[0]));
         if (!sesiList.length) {
             wrap.innerHTML = '<div style="background:#dcfce7;color:#15803d;padding:16px;border-radius:10px;text-align:center;font-size:13px;font-weight:600;">✅ Semua sesi live hari ini sudah selesai. Sampai jumpa besok!</div>';
             return;
