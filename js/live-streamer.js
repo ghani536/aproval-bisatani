@@ -298,7 +298,7 @@ const liveStreamer = {
         // Sesi yang sudah dipakai hari ini tidak bisa dipilih lagi
         const today = this._today();
         const usedSesi = new Set((this.sessions || []).filter(s => s.tanggal === today).map(s => String(s.sesi)));
-        const sesiList = [['1', 'Sesi 1'], ['2', 'Sesi 2'], ['3', 'Sesi 3 (pengganti/libur)']].filter(x => !usedSesi.has(x[0]));
+        const sesiList = [['1', 'Sesi 1'], ['2', 'Sesi 2'], ['3', 'Sesi 3 (pengganti/libur)'], ['4', 'Sesi 4 (tambahan jam — sukarela)']].filter(x => !usedSesi.has(x[0]));
         if (!sesiList.length) {
             wrap.innerHTML = '<div style="background:#dcfce7;color:#15803d;padding:16px;border-radius:10px;text-align:center;font-size:13px;font-weight:600;">✅ Semua sesi live hari ini sudah selesai. Sampai jumpa besok!</div>';
             return;
@@ -367,17 +367,47 @@ const liveStreamer = {
             </div>
             <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Jumlah Closing</label>
             <input type="number" id="ls-closing" min="0" value="0" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:12px;font-size:15px;">
+            <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Catatan (opsional)</label>
+            <textarea id="ls-catatan" rows="2" maxlength="300" placeholder="mis. dijadwal live tapi diminta jadi talent video produksi" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:12px;font-family:inherit;font-size:13px;resize:vertical;"></textarea>
+            <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Foto Bukti Dashboard Live <span style="color:#ef4444;">*wajib</span></label>
+            <input type="file" id="ls-bukti-file" accept="image/*" onchange="liveStreamer.onBuktiPick(this)" style="width:100%;font-size:12px;margin-bottom:6px;">
+            <div id="ls-bukti-preview" style="margin-bottom:12px;"></div>
             <label style="display:block;font-size:12px;color:#475569;font-weight:600;margin-bottom:4px;">Quote Akhir (opsional)</label>
             <textarea id="ls-quote-selesai" rows="2" maxlength="200" placeholder="Tulis quote / kata-kata motivasi (diundi tiap bulan)" style="width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:14px;font-family:inherit;font-size:13px;resize:vertical;"></textarea>
             <button id="ls-end-btn" onclick="liveStreamer.doEnd()" style="width:100%;background:#ef4444;color:#fff;border:none;padding:13px;border-radius:10px;cursor:pointer;font-weight:700;font-size:15px;"><i class="fas fa-stop-circle"></i> Selesai Live</button>
         </div>`;
+        this._buktiData = '';
+    },
+
+    // Kompres foto bukti dashboard (upload) jadi thumbnail base64 kecil
+    onBuktiPick(input) {
+        const file = input.files && input.files[0];
+        const prev = document.getElementById('ls-bukti-preview');
+        if (!file) { this._buktiData = ''; if (prev) prev.innerHTML = ''; return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const im = new Image();
+            im.onload = () => {
+                const maxW = 480;
+                const scale = Math.min(1, maxW / im.width);
+                const c = document.createElement('canvas');
+                c.width = Math.round(im.width * scale); c.height = Math.round(im.height * scale);
+                c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+                this._buktiData = c.toDataURL('image/jpeg', 0.55);
+                if (prev) prev.innerHTML = `<img src="${this._buktiData}" style="max-width:160px;border-radius:8px;border:1px solid #e2e8f0;">`;
+            };
+            im.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     },
 
     async doEnd() {
         if (!this.active) return;
         if (!this.location) { alert('⚠️ GPS belum siap. Tunggu lokasi muncul lalu coba lagi.'); this.getLocation(); return; }
+        if (!this._buktiData) { alert('⚠️ Foto bukti dashboard live wajib di-upload sebelum selesai.'); return; }
         const closing = document.getElementById('ls-closing').value;
         const quote = document.getElementById('ls-quote-selesai').value.trim().substring(0, 200);
+        const catatan = document.getElementById('ls-catatan').value.trim().substring(0, 300);
         const img = this.captureImage();
         const a = this._actor();
         const btn = document.getElementById('ls-end-btn');
@@ -385,7 +415,7 @@ const liveStreamer = {
         try {
             const res = await api.post({
                 action: 'endLiveSession', id: this.active.id, actor_id: a.actor_id, actor_name: a.actor_name,
-                jumlah_closing: closing, quote_selesai: quote,
+                jumlah_closing: closing, quote_selesai: quote, catatan: catatan, bukti_foto: this._buktiData,
                 lat: this.location.lat, lng: this.location.lng, location: this._locStr(), thumbnail: img.thumb
             });
             if (res && res.success) {
@@ -419,12 +449,60 @@ const liveStreamer = {
                 <div style="text-align:right;white-space:nowrap;">
                     <div style="font-weight:700;color:#0f766e;">Rp ${Number(s.komisi_host || 0).toLocaleString('id-ID')}</div>
                     ${badge}
+                    <button onclick="liveStreamer.openEditClosing('${this._esc(s.id)}')" title="Edit closing" style="background:#dbeafe;color:#1e40af;border:none;padding:3px 7px;border-radius:5px;cursor:pointer;font-size:11px;margin-left:4px;"><i class="fas fa-edit"></i></button>
                 </div>
             </div>`;
         }).join('');
         wrap.innerHTML = `<h4 style="margin:0 0 8px;font-size:14px;color:#334155;"><i class="fas fa-history" style="color:#94a3b8;"></i> Riwayat Bulan Ini</h4>
             <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:6px 14px;">${rows}
             <div style="display:flex;justify-content:space-between;padding:10px 0 4px;font-size:13px;font-weight:700;color:#0f766e;"><span>Total komisi (bagian saya)</span><span>Rp ${totalKomisi.toLocaleString('id-ID')}</span></div></div>`;
+    },
+
+    // ---------- EDIT CLOSING (karyawan, perlu ACC ulang admin) ----------
+    openEditClosing(id) {
+        const s = (this.sessions || []).find(x => String(x.id) === String(id));
+        if (!s) return;
+        this._editClosingId = id;
+        this._editBuktiData = '';
+        document.getElementById('lec-info').textContent = `${s.tanggal} · Sesi ${s.sesi} · ${s.toko}`;
+        document.getElementById('lec-closing').value = s.jumlah_closing || 0;
+        document.getElementById('lec-catatan').value = '';
+        document.getElementById('lec-bukti-preview').innerHTML = '';
+        const fi = document.getElementById('lec-bukti-file'); if (fi) fi.value = '';
+        document.getElementById('modal-live-edit-closing').style.display = 'flex';
+    },
+    onEditBuktiPick(input) {
+        const file = input.files && input.files[0];
+        const prev = document.getElementById('lec-bukti-preview');
+        if (!file) { this._editBuktiData = ''; if (prev) prev.innerHTML = ''; return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const im = new Image();
+            im.onload = () => {
+                const scale = Math.min(1, 480 / im.width);
+                const c = document.createElement('canvas');
+                c.width = Math.round(im.width * scale); c.height = Math.round(im.height * scale);
+                c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+                this._editBuktiData = c.toDataURL('image/jpeg', 0.55);
+                if (prev) prev.innerHTML = `<img src="${this._editBuktiData}" style="max-width:160px;border-radius:8px;border:1px solid #e2e8f0;">`;
+            };
+            im.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    },
+    async saveEditClosing() {
+        if (!this._editBuktiData) { alert('⚠️ Upload foto bukti dashboard untuk perubahan closing.'); return; }
+        const a = this._actor();
+        const closing = document.getElementById('lec-closing').value;
+        const catatan = document.getElementById('lec-catatan').value.trim().substring(0, 300);
+        try {
+            const res = await api.post({ action: 'editMyClosing', id: this._editClosingId, userId: a.actor_id, jumlah_closing: closing, catatan: catatan, bukti_foto: this._editBuktiData, actor_id: a.actor_id, actor_name: a.actor_name });
+            if (res && res.success) {
+                document.getElementById('modal-live-edit-closing').style.display = 'none';
+                alert('✅ Closing diperbarui. Menunggu ACC ulang admin.');
+                this.refresh();
+            } else alert('❌ ' + ((res && res.error) || 'gagal'));
+        } catch (e) { alert('❌ Error: ' + e.message); }
     }
 };
 
