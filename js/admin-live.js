@@ -153,9 +153,14 @@ const adminLive = {
                     <b>${this._esc(s.nama)}</b> · Sesi ${this._esc(s.sesi)} · ${this._esc(s.toko)}${s.platform ? ' (' + this._esc(s.platform) + ')' : ''}<br>
                     ${this._esc(s.tanggal)} · ${this._esc(s.lokasi_tipe)} · durasi <b>${this._fmtDur(s.durasi_menit)}</b> · ${s.jumlah_closing} closing${s.cohost_nama ? ' · co-host ' + this._esc(s.cohost_nama) : ''}
                 </div>
-                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                ${s.catatan ? `<div style="background:#fef9c3;color:#854d0e;padding:9px 12px;border-radius:8px;font-size:12px;margin-bottom:12px;"><b>Catatan:</b> ${this._esc(s.catatan)}</div>` : ''}
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
                     ${photo(s.mulai_foto, '📷 Selfie Mulai', s.mulai_jam, s.mulai_lokasi, s.quote_mulai)}
                     ${photo(s.selesai_foto, '📷 Selfie Selesai', s.selesai_jam, s.selesai_lokasi, s.quote_selesai)}
+                </div>
+                <div>
+                    <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;">🧾 Bukti Dashboard Live (${s.jumlah_closing} closing)</div>
+                    ${s.bukti_foto ? `<img src="${s.bukti_foto}" style="max-width:100%;border-radius:8px;border:1px solid #e2e8f0;">` : '<div style="background:#f1f5f9;border-radius:8px;padding:18px;text-align:center;color:#cbd5e1;font-size:12px;">tidak ada bukti</div>'}
                 </div>`;
         } catch (e) { body.innerHTML = `<div style="color:#ef4444;padding:16px;">Error: ${e.message}</div>`; }
     },
