@@ -291,10 +291,11 @@ const adminLive = {
                 ? `${this._rupiah(s.komisi)}<br><small style="color:#64748b;">@${this.numShort(s.komisi_host)} + co ${this.numShort(s.komisi_cohost)}</small>`
                 : this._rupiah(s.komisi);
             const delBtn = `<button onclick="adminLive.deleteSession('${this._esc(s.id)}')" title="Hapus sesi" style="background:#fee2e2;color:#dc2626;border:none;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;"><i class="fas fa-trash"></i></button>`;
+            const detailBtn = berlangsung ? '' : `<button onclick="adminLive.openSessionDetail('${this._esc(s.id)}')" title="Lihat foto, catatan & bukti" style="background:#f3e8ff;color:#7c3aed;border:none;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;"><i class="fas fa-image"></i></button>`;
             const editApprove = berlangsung ? '' : `
                 <button onclick="adminLive.openEditModal('${this._esc(s.id)}')" title="Edit closing" style="background:#dbeafe;color:#1e40af;border:none;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;"><i class="fas fa-edit"></i></button>
                 <button onclick="adminLive.toggleApprove('${this._esc(s.id)}', ${approved})" title="${approved ? 'Batalkan ACC' : 'Setujui'}" style="background:${approved ? '#fef3c7' : '#dcfce7'};color:${approved ? '#92400e' : '#15803d'};border:none;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;"><i class="fas fa-${approved ? 'undo' : 'check'}"></i></button>`;
-            const actions = editApprove + ' ' + delBtn;
+            const actions = detailBtn + ' ' + editApprove + ' ' + delBtn;
             return `<tr style="border-bottom:1px solid #f1f5f9;">
                 <td style="padding:8px 6px;font-size:12px;white-space:nowrap;">${this._esc(s.tanggal)}<br><small style="color:#94a3b8;">Sesi ${this._esc(s.sesi)}</small></td>
                 <td style="padding:8px 6px;font-size:12px;">${this._esc(s.nama)}</td>
@@ -303,7 +304,7 @@ const adminLive = {
                 <td style="padding:8px 6px;font-size:11px;white-space:nowrap;">${this._jam(s.mulai_jam) || '—'} <span style="color:#cbd5e1;">→</span> ${this._jam(s.selesai_jam) || '—'}</td>
                 <td style="padding:8px 6px;font-size:12px;">${this._esc(s.toko)}</td>
                 <td style="padding:8px 6px;font-size:12px;text-align:center;">${this._fmtDur(s.durasi_menit)}</td>
-                <td style="padding:8px 6px;font-size:12px;text-align:center;font-weight:600;">${s.jumlah_closing}</td>
+                <td style="padding:8px 6px;font-size:12px;text-align:center;font-weight:600;">${s.jumlah_closing}${s.catatan ? ' <i class="fas fa-note-sticky" title="' + this._esc(s.catatan) + '" style="color:#a16207;font-size:10px;"></i>' : ''}</td>
                 <td style="padding:8px 6px;font-size:12px;white-space:nowrap;">${komisiTxt}</td>
                 <td style="padding:8px 6px;text-align:center;">${statusBadge}</td>
                 <td style="padding:8px 6px;white-space:nowrap;">${actions}</td>
