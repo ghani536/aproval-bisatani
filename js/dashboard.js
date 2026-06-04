@@ -110,10 +110,43 @@ const dashboard = {
             this._renderRiwayatGaji(riwayatGaji);
             this._renderPerformance(perfReviews);
             this._renderTips(quota);
+            this._renderKpiReminder(user.id, today);
 
         } catch (e) {
             console.error('Dashboard error:', e);
         }
+    },
+
+    // Banner pengingat isi capaian KPI hari ini (jika karyawan punya KPI & belum lengkap)
+    async _renderKpiReminder(userId, today) {
+        const wrap = document.getElementById('emp-kpi-reminder');
+        if (!wrap) return;
+        const ymd = this._ymd(today);
+        const bulan = ymd.substring(0, 7);
+        try {
+            const [resKpi, resDaily] = await Promise.all([
+                api.post({ action: 'getEmployeeKpi', userId: userId, actor_id: userId }),
+                api.post({ action: 'getKpiDaily', userId: userId, actor_id: userId, bulan: bulan })
+            ]);
+            const items = (resKpi && resKpi.success) ? (resKpi.items || []) : [];
+            if (!items.length) { wrap.style.display = 'none'; return; }
+            const todayInputs = (resDaily && resDaily.success) ? (resDaily.data || []).filter(r => r.tanggal === ymd) : [];
+            const filled = new Set(todayInputs.map(r => String(r.kpi_item_id)));
+            const sisa = items.filter(it => !filled.has(String(it.id))).length;
+            if (sisa <= 0) {
+                wrap.style.display = 'block';
+                wrap.innerHTML = `<div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:12px 16px;border-radius:10px;display:flex;align-items:center;gap:10px;">
+                    <i class="fas fa-circle-check" style="color:#16a34a;font-size:18px;"></i>
+                    <div style="font-size:13px;color:#166534;">Capaian KPI hari ini sudah lengkap. Mantap! 🎯</div></div>`;
+            } else {
+                wrap.style.display = 'block';
+                wrap.innerHTML = `<div onclick="router.navigate('kpi-saya')" style="background:linear-gradient(135deg,#ede9fe,#ddd6fe);border-left:4px solid #7c3aed;padding:12px 16px;border-radius:10px;display:flex;align-items:center;gap:10px;cursor:pointer;">
+                    <i class="fas fa-bullseye" style="color:#7c3aed;font-size:18px;"></i>
+                    <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#5b21b6;">${sisa} indikator KPI belum diisi hari ini</div>
+                    <div style="font-size:11px;color:#6d28d9;">Tap untuk isi capaian KPI-mu →</div></div>
+                    <i class="fas fa-chevron-right" style="color:#7c3aed;"></i></div>`;
+            }
+        } catch (e) { wrap.style.display = 'none'; }
     },
 
     _renderStatusToday(myAttendance, today) {
