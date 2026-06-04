@@ -53,11 +53,21 @@ const adminKpi = {
     async loadRingkasan() {
         const wrap = document.getElementById('kpi-ringkasan-content');
         if (!wrap) return;
+        if (!this.employees || !this.employees.length) await this._loadEmployees();
+        // Default bulan + isi dropdown divisi (sekali)
+        const bInput = document.getElementById('kpi-rk-bulan');
+        if (bInput && !bInput.value) bInput.value = this._bulanIni();
+        const bulan = (bInput && bInput.value) || this._bulanIni();
+        const nonAdmin = (this.employees || []).filter(e => !['admin', 'superadmin'].includes(String(e.role || '').toLowerCase()));
+        const dSel = document.getElementById('kpi-rk-divisi');
+        if (dSel && dSel.options.length <= 1) {
+            const depts = Array.from(new Set(nonAdmin.map(e => e.department).filter(Boolean))).sort();
+            dSel.innerHTML = '<option value="">Semua divisi</option>' + depts.map(d => `<option value="${this._esc(d)}">${this._esc(d)}</option>`).join('');
+        }
+        const divisi = dSel ? dSel.value : '';
         wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;"><i class="fas fa-sync fa-spin"></i> Memuat nilai semua karyawan...</div>';
         const a = this._actor();
-        const bulan = this._bulanIni();
-        if (!this.employees || !this.employees.length) await this._loadEmployees();
-        const emps = (this.employees || []).filter(e => !['admin', 'superadmin'].includes(String(e.role || '').toLowerCase()));
+        const emps = divisi ? nonAdmin.filter(e => String(e.department) === divisi) : nonAdmin;
         try {
             const results = await Promise.all(emps.map(e =>
                 api.post({ action: 'getKpiScore', userId: e.id, actor_id: a.actor_id, bulan: bulan })

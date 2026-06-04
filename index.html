@@ -306,6 +306,9 @@
                     <!-- Birthday banner (personal) -->
                     <div id="emp-birthday-banner" style="display:none; margin-bottom:14px;"></div>
 
+                    <!-- Reminder isi KPI hari ini -->
+                    <div id="emp-kpi-reminder" style="display:none; margin-bottom:14px;"></div>
+
                     <!-- Welcome banner gradient -->
                     <div id="emp-welcome-card" class="streamer-hide" style="background:linear-gradient(135deg,#10b981,#059669); color:white; padding:18px 20px; border-radius:14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
                         <div style="flex:1; min-width:0;">
@@ -851,6 +854,11 @@
 
                         <!-- TAB: Ringkasan Nilai (semua karyawan) -->
                         <div id="kpi-tab-ringkasan" style="display:none;">
+                            <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+                                <div><label style="display:block; font-size:11px; color:#64748b; margin-bottom:3px;">Bulan</label><input type="month" id="kpi-rk-bulan" style="padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;"></div>
+                                <div><label style="display:block; font-size:11px; color:#64748b; margin-bottom:3px;">Divisi</label><select id="kpi-rk-divisi" style="padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; min-width:130px;"><option value="">Semua divisi</option></select></div>
+                                <button onclick="adminKpi.loadRingkasan()" style="background:#7c3aed; color:#fff; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fas fa-sync"></i> Tampilkan</button>
+                            </div>
                             <div id="kpi-ringkasan-content"><div style="text-align:center; color:#94a3b8; padding:40px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
                         </div>
 
