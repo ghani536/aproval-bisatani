@@ -8,8 +8,12 @@ const api = {
     // 1. FUNGSI POST (KHUSUS SIMPAN: Absen Foto, Gaji, Karyawan)
     // Pakai teknik Request Sinkron agar data Foto Besar tidak terputus
     async post(data) {
+        const action = String((data && data.action) || '');
+        // Aksi BACA (idempoten) aman diulang via GET kalau respons POST rusak.
+        // Aksi SIMPAN/UBAH TIDAK boleh diulang (POST sudah tereksekusi di server → cegah duplikat).
+        const isRead = /^get/i.test(action);
         try {
-            console.log("API POST:", data.action);
+            console.log("API POST:", action);
             const response = await fetch(API_BASE_URL, {
                 method: 'POST',
                 mode: 'cors', // Kita paksa CORS agar Payroll bisa baca jawaban
@@ -21,36 +25,38 @@ const api = {
             try {
                 return JSON.parse(text);
             } catch (parseErr) {
-                // POST mengembalikan non-JSON (gangguan POST sisi Google) → fallback ke GET
-                console.warn('POST non-JSON, fallback GET:', data.action);
-                const viaGet = await this._postViaGet(data);
-                if (viaGet) return viaGet;
-                throw parseErr;
+                // POST tereksekusi di server tapi respons rusak (balas HTML, gangguan sisi Google).
+                if (isRead) {
+                    // Baca: ambil ulang datanya via GET (aman, idempoten)
+                    const viaGet = await this._postViaGet(data);
+                    if (viaGet) return viaGet;
+                    return { success: false, error: 'Gagal memuat (server sibuk)' };
+                }
+                // Simpan/ubah: data SUDAH tersimpan via POST → JANGAN ulang via GET (hindari duplikat)
+                return { success: true, _unconfirmed: true };
             }
         } catch (error) {
             console.error('POST Error:', error);
-            // Coba jalur GET sekali lagi (mis. POST diblokir / network)
-            try {
-                const viaGet = await this._postViaGet(data);
-                if (viaGet) return viaGet;
-            } catch (e) { /* lanjut ke failsafe */ }
-            // FAILSAFE: Jika kirim ABSEN tapi response JSON diblokir (Google Redirect)
-            if (data.action === 'saveAttendance' || data.action === 'saveEmployee') {
+            // Error jaringan (POST mungkin tidak tereksekusi).
+            if (isRead) {
+                try { const viaGet = await this._postViaGet(data); if (viaGet) return viaGet; } catch (e) { /* lanjut */ }
+            }
+            if (action === 'saveAttendance' || action === 'saveEmployee') {
                 return { success: true };
             }
             return { success: false, error: 'Server Sibuk, Coba Lagi' };
         }
     },
 
-    // Fallback: kirim payload via GET saat POST bermasalah. Nilai sangat besar
-    // (mis. foto base64) di-skip agar URL tidak kepanjangan — absen tetap tersimpan.
+    // Fallback BACA: ambil data via GET saat respons POST rusak. Hanya dipakai
+    // untuk aksi get* (idempoten). Nilai besar di-skip agar URL tidak kepanjangan.
     async _postViaGet(data) {
         let url = `${API_BASE_URL}?_t=${Date.now()}`;
         for (let key in data) {
             const v = data[key];
             if (v === undefined || v === null) continue;
             const s = (typeof v === 'object') ? JSON.stringify(v) : String(v);
-            if (s.length > 6000) continue; // skip foto base64 / data besar
+            if (s.length > 6000) continue;
             url += `&${encodeURIComponent(key)}=${encodeURIComponent(s)}`;
         }
         const res = await fetch(url, { method: 'GET', cache: 'no-store' });
