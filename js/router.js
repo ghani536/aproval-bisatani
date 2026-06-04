@@ -143,6 +143,9 @@ const router = {
                 case 'admin-live':
                     if (window.adminLive) adminLive.init();
                     break;
+                case 'kpi-saya':
+                    if (window.kpiSaya) kpiSaya.init();
+                    break;
             }
         } catch (e) {
             console.error("Router: Gagal init halaman " + page, e);
