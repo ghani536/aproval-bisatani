@@ -75,7 +75,7 @@ const adminKpi = {
                     .catch(() => ({ emp: e, score: null }))
             ));
             const rows = results.filter(x => x.score && (x.score.items || []).length > 0)
-                .map(x => ({ id: x.emp.id, name: x.emp.name, dept: x.emp.department || '-', jumlah: x.score.items.length, total: Number(x.score.total) || 0, totalBobot: x.score.totalBobot }))
+                .map(x => { const tb = Number(x.score.totalBobot) || 0; return { id: x.emp.id, name: x.emp.name, dept: x.emp.department || '-', jumlah: x.score.items.length, total: tb > 0 ? ((Number(x.score.total) || 0) / tb * 100) : 0, totalBobot: tb }; })
                 .sort((p, q) => q.total - p.total);
             if (!rows.length) { wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px;">Belum ada karyawan dengan KPI. Assign dulu di tab "Per Karyawan".</div>'; return; }
             const namaBulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][parseInt(bulan.substring(5, 7)) - 1];
@@ -204,7 +204,8 @@ const adminKpi = {
     _renderScoreCard() {
         if (!this.empScore) return '';
         const s = this.empScore;
-        const total = Number(s.total) || 0;
+        const _tb = Number(s.totalBobot) || 0;
+        const total = _tb > 0 ? ((Number(s.total) || 0) / _tb * 100) : 0;
         const c = total >= 90 ? '#16a34a' : (total >= 70 ? '#f59e0b' : '#ef4444');
         const areaRows = (s.areas || []).map(ar => {
             const pc = Math.round(ar.persen); const bw = Math.min(100, pc);
@@ -217,7 +218,7 @@ const adminKpi = {
                 <h4 style="margin:0;"><i class="fas fa-chart-line" style="color:#7c3aed;"></i> Skor Bulan Ini</h4>
                 <button onclick="adminKpi.openVerifyModal()" style="background:#ede9fe;color:#5b21b6;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;"><i class="fas fa-check-double"></i> Verifikasi Capaian</button>
             </div>
-            <div style="font-size:34px;font-weight:800;color:${c};line-height:1;">${Math.round(total)}<small style="font-size:14px;color:#94a3b8;">% / ${s.totalBobot}%</small></div>
+            <div style="font-size:34px;font-weight:800;color:${c};line-height:1;">${Math.round(total)}<small style="font-size:14px;color:#94a3b8;">%</small> <small style="font-size:11px;color:#94a3b8;font-weight:500;">(bobot aktif ${s.totalBobot}%)</small></div>
             <div style="font-size:11px;color:#94a3b8;margin:2px 0 12px;">${s.workingDays} hari kerja/bulan</div>
             ${areaRows}
             <details style="margin-top:10px;"><summary style="cursor:pointer;font-size:12px;color:#7c3aed;font-weight:600;">Rincian per indikator</summary>

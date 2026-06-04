@@ -60,7 +60,9 @@ const kpiSaya = {
         // ---- Skor bulan ini ----
         let scoreHtml = '';
         if (this.score) {
-            const total = Number(this.score.total) || 0;
+            // Normalisasi: skor = % dari bobot aktual (aman walau total bobot != 100)
+            const tb = Number(this.score.totalBobot) || 0;
+            const total = tb > 0 ? ((Number(this.score.total) || 0) / tb * 100) : 0;
             const c = total >= 90 ? '#16a34a' : (total >= 70 ? '#f59e0b' : '#ef4444');
             const areaRows = (this.score.areas || []).map(ar => {
                 const pc = Math.round(ar.persen);
@@ -75,7 +77,7 @@ const kpiSaya = {
             <div style="background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border-radius:14px;padding:18px;margin-bottom:16px;">
                 <div style="font-size:12px;opacity:0.9;">Skor KPI ${namaBulan}</div>
                 <div style="font-size:40px;font-weight:800;line-height:1;margin:4px 0;">${Math.round(total)}<small style="font-size:16px;opacity:0.8;">%</small></div>
-                <div style="font-size:11px;opacity:0.85;">dari total bobot ${this.score.totalBobot}% · ${this.score.workingDays} hari kerja/bulan</div>
+                <div style="font-size:11px;opacity:0.85;">capaian dari ${this.score.totalBobot}% bobot aktif · ${this.score.workingDays} hari kerja/bulan</div>
             </div>
             <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;margin-bottom:16px;">
                 <div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:10px;">Skor per Area</div>
