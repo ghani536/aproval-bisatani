@@ -48,6 +48,9 @@ const adminLive = {
         const f = document.getElementById('al-from'); const t = document.getElementById('al-to');
         if (f && !f.value) f.value = first;
         if (t && !t.value) t.value = today;
+        const hf = document.getElementById('alh-from'); const ht = document.getElementById('alh-to');
+        if (hf && !hf.value) hf.value = first;
+        if (ht && !ht.value) ht.value = today;
         this.switchTab(this.currentTab || 'rekap');
         this.loadRate();
         this.loadSessions();
@@ -57,7 +60,7 @@ const adminLive = {
 
     switchTab(tab) {
         this.currentTab = tab;
-        ['rekap', 'toko', 'komisi'].forEach(x => {
+        ['rekap', 'host', 'toko', 'komisi'].forEach(x => {
             const pane = document.getElementById('al-tab-' + x);
             if (pane) pane.style.display = x === tab ? 'block' : 'none';
             const btn = document.getElementById('al-tabbtn-' + x);
@@ -68,6 +71,93 @@ const adminLive = {
                 btn.style.fontWeight = on ? '700' : '600';
             }
         });
+        if (tab === 'host') this.loadPerHost();
+    },
+
+    // ---------- PER HOST (total durasi + detail foto/quote) ----------
+    async loadPerHost() {
+        const wrap = document.getElementById('al-host-content');
+        wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div>';
+        const a = this._actor();
+        try {
+            const res = await api.post({ action: 'getLiveSessions', actor_id: a.actor_id, date_from: document.getElementById('alh-from').value, date_to: document.getElementById('alh-to').value });
+            this.hostSessions = (res && res.success) ? (res.data || []) : [];
+            this._renderHostSummary();
+        } catch (e) { wrap.innerHTML = `<div style="color:#ef4444;padding:20px;">Error: ${e.message}</div>`; }
+    },
+    _renderHostSummary() {
+        const wrap = document.getElementById('al-host-content');
+        const map = {};
+        (this.hostSessions || []).forEach(s => {
+            const k = String(s.userId);
+            if (!map[k]) map[k] = { userId: k, nama: s.nama, sesi: 0, durasi: 0, closing: 0, komisi: 0 };
+            map[k].sesi += 1;
+            map[k].durasi += Number(s.durasi_menit) || 0;
+            map[k].closing += Number(s.jumlah_closing) || 0;
+            map[k].komisi += Number(s.komisi_host) || 0;
+        });
+        const rows = Object.values(map).sort((p, q) => q.durasi - p.durasi);
+        if (!rows.length) { wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;">Tidak ada sesi pada rentang ini.</div>'; return; }
+        wrap.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:520px;">
+            <thead><tr style="background:#f8fafc;text-align:left;">
+                <th style="padding:9px 8px;font-size:11px;color:#64748b;">Host</th>
+                <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:center;">Sesi</th>
+                <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:center;">Total Durasi</th>
+                <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:center;">Closing</th>
+                <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:right;">Komisi</th>
+            </tr></thead><tbody>
+            ${rows.map(r => `<tr style="border-bottom:1px solid #f1f5f9;cursor:pointer;" onclick="adminLive.showHostSessions('${this._esc(r.userId)}')">
+                <td style="padding:9px 8px;font-size:13px;font-weight:600;color:#2563eb;border-bottom:1px dotted #cbd5e1;">${this._esc(r.nama)}</td>
+                <td style="padding:9px 8px;font-size:13px;text-align:center;">${r.sesi}</td>
+                <td style="padding:9px 8px;font-size:13px;text-align:center;font-weight:700;color:#7e22ce;">${this._fmtDur(r.durasi)}</td>
+                <td style="padding:9px 8px;font-size:13px;text-align:center;">${r.closing}</td>
+                <td style="padding:9px 8px;font-size:13px;text-align:right;color:#0f766e;font-weight:600;">${this._rupiah(r.komisi)}</td>
+            </tr>`).join('')}
+            </tbody></table></div>
+            <div id="al-host-detail" style="margin-top:16px;"></div>`;
+    },
+    showHostSessions(userId) {
+        const sessions = (this.hostSessions || []).filter(s => String(s.userId) === String(userId));
+        const det = document.getElementById('al-host-detail');
+        if (!sessions.length) { det.innerHTML = ''; return; }
+        const nama = sessions[0].nama;
+        det.innerHTML = `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
+            <h4 style="margin:0 0 10px;font-size:14px;">Sesi ${this._esc(nama)}</h4>
+            ${sessions.map(s => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #f1f5f9;">
+                <div><div style="font-size:13px;font-weight:600;color:#1e293b;">${this._esc(s.tanggal)} · Sesi ${this._esc(s.sesi)} · ${this._esc(s.toko)}</div>
+                <div style="font-size:11px;color:#64748b;">${this._esc(s.lokasi_tipe)} · ${this._fmtDur(s.durasi_menit)} · ${s.jumlah_closing} closing${s.cohost_nama ? ' · co: ' + this._esc(s.cohost_nama) : ''}</div></div>
+                <button onclick="adminLive.openSessionDetail('${this._esc(s.id)}')" style="background:#fee2e2;color:#b91c1c;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;"><i class="fas fa-image"></i> Foto & Quote</button>
+            </div>`).join('')}
+        </div>`;
+        det.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    },
+    async openSessionDetail(id) {
+        const modal = document.getElementById('modal-live-detail');
+        const body = document.getElementById('ld-body');
+        modal.style.display = 'flex';
+        body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div>';
+        const a = this._actor();
+        try {
+            const res = await api.post({ action: 'getLiveSessionDetail', id: id, actor_id: a.actor_id });
+            if (!res || !res.success) { body.innerHTML = `<div style="color:#ef4444;padding:16px;">${(res && res.error) || 'gagal'}</div>`; return; }
+            const s = res.data;
+            const photo = (src, label, jam, lok, quote) => `
+                <div style="flex:1;min-width:140px;">
+                    <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;">${label}${jam ? ' · ' + this._esc(String(jam).substring(11, 16)) : ''}</div>
+                    ${src ? `<img src="${src}" style="width:100%;border-radius:8px;border:1px solid #e2e8f0;">` : '<div style="background:#f1f5f9;border-radius:8px;padding:24px;text-align:center;color:#cbd5e1;font-size:12px;">tidak ada foto</div>'}
+                    ${lok ? `<div style="font-size:10px;color:#94a3b8;margin-top:3px;">${this._esc(lok)}</div>` : ''}
+                    ${quote ? `<div style="font-size:11px;color:#475569;margin-top:5px;font-style:italic;">"${this._esc(quote)}"</div>` : ''}
+                </div>`;
+            body.innerHTML = `
+                <div style="font-size:13px;color:#475569;margin-bottom:12px;line-height:1.6;">
+                    <b>${this._esc(s.nama)}</b> · Sesi ${this._esc(s.sesi)} · ${this._esc(s.toko)}${s.platform ? ' (' + this._esc(s.platform) + ')' : ''}<br>
+                    ${this._esc(s.tanggal)} · ${this._esc(s.lokasi_tipe)} · durasi <b>${this._fmtDur(s.durasi_menit)}</b> · ${s.jumlah_closing} closing${s.cohost_nama ? ' · co-host ' + this._esc(s.cohost_nama) : ''}
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    ${photo(s.mulai_foto, '📷 Selfie Mulai', s.mulai_jam, s.mulai_lokasi, s.quote_mulai)}
+                    ${photo(s.selesai_foto, '📷 Selfie Selesai', s.selesai_jam, s.selesai_lokasi, s.quote_selesai)}
+                </div>`;
+        } catch (e) { body.innerHTML = `<div style="color:#ef4444;padding:16px;">Error: ${e.message}</div>`; }
     },
 
     // ---------- KOMISI RATE ----------

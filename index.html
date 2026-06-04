@@ -52,15 +52,17 @@
             .sidebar { display: none; }
         }
 
-        /* Karyawan mode: HANYA bottom-nav (no sidebar), apa pun ukuran layar */
-        body.is-employee .sidebar { display: none !important; }
-        body.is-employee .sidebar-backdrop { display: none !important; }
-        body.is-employee .mobile-menu-toggle { display: none !important; }
-        body.is-employee .mobile-bottom-nav { display: grid !important; }
-        body.is-employee .main-content {
-            margin-left: 0 !important;
-            width: 100% !important;
-            padding-bottom: 80px !important;
+        /* Karyawan mode: bottom-nav HANYA di mobile. Di desktop pakai sidebar kiri (seperti admin). */
+        @media (max-width: 768px) {
+            body.is-employee .sidebar { display: none !important; }
+            body.is-employee .sidebar-backdrop { display: none !important; }
+            body.is-employee .mobile-menu-toggle { display: none !important; }
+            body.is-employee .mobile-bottom-nav { display: grid !important; }
+            body.is-employee .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding-bottom: 80px !important;
+            }
         }
 
         @media print {
@@ -841,9 +843,15 @@
                         </div>
 
                         <!-- Tab switch -->
-                        <div style="display:flex; gap:8px; margin-bottom:16px; border-bottom:1px solid #e2e8f0;">
+                        <div style="display:flex; gap:8px; margin-bottom:16px; border-bottom:1px solid #e2e8f0; flex-wrap:wrap;">
+                            <button id="kpi-tabbtn-ringkasan" onclick="adminKpi.switchTab('ringkasan')" style="background:none; border:none; border-bottom:3px solid transparent; color:#64748b; padding:10px 14px; cursor:pointer; font-weight:600; font-size:14px;"><i class="fas fa-table-list"></i> Ringkasan Nilai</button>
                             <button id="kpi-tabbtn-employee" onclick="adminKpi.switchTab('employee')" style="background:none; border:none; border-bottom:3px solid #7c3aed; color:#7c3aed; padding:10px 14px; cursor:pointer; font-weight:700; font-size:14px;"><i class="fas fa-user"></i> Per Karyawan</button>
                             <button id="kpi-tabbtn-template" onclick="adminKpi.switchTab('template')" style="background:none; border:none; border-bottom:3px solid transparent; color:#64748b; padding:10px 14px; cursor:pointer; font-weight:600; font-size:14px;"><i class="fas fa-layer-group"></i> Template Divisi</button>
+                        </div>
+
+                        <!-- TAB: Ringkasan Nilai (semua karyawan) -->
+                        <div id="kpi-tab-ringkasan" style="display:none;">
+                            <div id="kpi-ringkasan-content"><div style="text-align:center; color:#94a3b8; padding:40px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
                         </div>
 
                         <!-- TAB: Per Karyawan -->
@@ -1024,6 +1032,7 @@
                         </div>
                         <div style="display:flex; gap:4px; border-bottom:2px solid #e2e8f0; margin-bottom:16px;">
                             <button id="al-tabbtn-rekap" onclick="adminLive.switchTab('rekap')" style="padding:10px 16px; background:none; border:none; border-bottom:3px solid #ef4444; margin-bottom:-2px; cursor:pointer; font-size:13px; font-weight:700; color:#ef4444;">Rekap Sesi</button>
+                            <button id="al-tabbtn-host" onclick="adminLive.switchTab('host')" style="padding:10px 16px; background:none; border:none; border-bottom:3px solid transparent; margin-bottom:-2px; cursor:pointer; font-size:13px; font-weight:600; color:#64748b;">Per Host</button>
                             <button id="al-tabbtn-toko" onclick="adminLive.switchTab('toko')" style="padding:10px 16px; background:none; border:none; border-bottom:3px solid transparent; margin-bottom:-2px; cursor:pointer; font-size:13px; font-weight:600; color:#64748b;">Master Toko</button>
                             <button id="al-tabbtn-komisi" onclick="adminLive.switchTab('komisi')" style="padding:10px 16px; background:none; border:none; border-bottom:3px solid transparent; margin-bottom:-2px; cursor:pointer; font-size:13px; font-weight:600; color:#64748b;">Komisi</button>
                         </div>
@@ -1036,6 +1045,15 @@
                                 <button onclick="adminLive.loadSessions()" style="background:#ef4444; color:#fff; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fas fa-sync"></i> Tampilkan</button>
                             </div>
                             <div id="al-rekap-content"><div style="text-align:center;color:#94a3b8;padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
+                        </div>
+
+                        <div id="al-tab-host" style="display:none;">
+                            <div style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:14px;">
+                                <div><label style="display:block; font-size:11px; color:#64748b; margin-bottom:3px;">Dari</label><input type="date" id="alh-from" style="padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;"></div>
+                                <div><label style="display:block; font-size:11px; color:#64748b; margin-bottom:3px;">Sampai</label><input type="date" id="alh-to" style="padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px;"></div>
+                                <button onclick="adminLive.loadPerHost()" style="background:#ef4444; color:#fff; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:600;"><i class="fas fa-sync"></i> Tampilkan</button>
+                            </div>
+                            <div id="al-host-content"><div style="text-align:center;color:#94a3b8;padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div></div>
                         </div>
 
                         <div id="al-tab-toko" style="display:none;">
@@ -1090,6 +1108,17 @@
                                     <button onclick="adminLive.closeModal('modal-live-edit')" style="background:#e2e8f0; color:#475569; border:none; padding:9px 16px; border-radius:8px; cursor:pointer;">Batal</button>
                                     <button onclick="adminLive.saveEdit()" style="background:#3b82f6; color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Simpan</button>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal: Detail Sesi Live (foto selfie + quote) -->
+                        <div id="modal-live-detail" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:1000; align-items:center; justify-content:center; padding:16px;">
+                            <div style="background:#fff; border-radius:14px; padding:20px; width:100%; max-width:460px; max-height:86vh; overflow:auto;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                    <h4 style="margin:0;"><i class="fas fa-video" style="color:#ef4444;"></i> Detail Sesi Live</h4>
+                                    <button onclick="adminLive.closeModal('modal-live-detail')" style="background:none; border:none; font-size:20px; cursor:pointer; color:#94a3b8;">&times;</button>
+                                </div>
+                                <div id="ld-body"></div>
                             </div>
                         </div>
                     </div>
