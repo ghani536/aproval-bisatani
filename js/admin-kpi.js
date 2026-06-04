@@ -120,10 +120,40 @@ const adminKpi = {
             }
             this.empItems = res.items || [];
             this.empJobdesk = res.jobdesk || [];
+            try {
+                const bulan = (function () { const n = new Date(); return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0'); })();
+                this.empBulan = bulan;
+                const rs = await api.post({ action: 'getKpiScore', userId: this.currentUserId, actor_id: a.actor_id, bulan: bulan });
+                this.empScore = (rs && rs.success) ? rs : null;
+            } catch (e) { this.empScore = null; }
             this._renderEmployee(wrap);
         } catch (e) {
             wrap.innerHTML = `<div style="color:#ef4444;padding:20px;">Error: ${e.message}</div>`;
         }
+    },
+
+    _renderScoreCard() {
+        if (!this.empScore) return '';
+        const s = this.empScore;
+        const total = Number(s.total) || 0;
+        const c = total >= 90 ? '#16a34a' : (total >= 70 ? '#f59e0b' : '#ef4444');
+        const areaRows = (s.areas || []).map(ar => {
+            const pc = Math.round(ar.persen); const bw = Math.min(100, pc);
+            const bc = pc >= 90 ? '#16a34a' : (pc >= 70 ? '#f59e0b' : '#ef4444');
+            return `<div style="margin-bottom:7px;"><div style="display:flex;justify-content:space-between;font-size:11px;color:#475569;margin-bottom:2px;"><span>${this._esc(ar.area)}</span><b style="color:${bc};">${pc}%</b></div><div style="height:5px;background:#e2e8f0;border-radius:4px;overflow:hidden;"><div style="height:100%;width:${bw}%;background:${bc};"></div></div></div>`;
+        }).join('');
+        const itemRows = (s.items || []).map(it => `<tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:5px 6px;font-size:11px;">${this._esc(it.indikator)}</td><td style="padding:5px 6px;font-size:11px;text-align:right;">${it.achieved}/${it.expected}</td><td style="padding:5px 6px;font-size:11px;text-align:right;color:#0f766e;font-weight:600;">${(Number(it.skor)||0).toFixed(1)}</td></tr>`).join('');
+        return `<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:12px;padding:14px 16px;margin-bottom:18px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <h4 style="margin:0;"><i class="fas fa-chart-line" style="color:#7c3aed;"></i> Skor Bulan Ini</h4>
+                <button onclick="adminKpi.openVerifyModal()" style="background:#ede9fe;color:#5b21b6;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;"><i class="fas fa-check-double"></i> Verifikasi Capaian</button>
+            </div>
+            <div style="font-size:34px;font-weight:800;color:${c};line-height:1;">${Math.round(total)}<small style="font-size:14px;color:#94a3b8;">% / ${s.totalBobot}%</small></div>
+            <div style="font-size:11px;color:#94a3b8;margin:2px 0 12px;">${s.workingDays} hari kerja/bulan</div>
+            ${areaRows}
+            <details style="margin-top:10px;"><summary style="cursor:pointer;font-size:12px;color:#7c3aed;font-weight:600;">Rincian per indikator</summary>
+            <table style="width:100%;border-collapse:collapse;margin-top:8px;"><thead><tr style="text-align:left;"><th style="font-size:10px;color:#94a3b8;padding:4px 6px;">Indikator</th><th style="font-size:10px;color:#94a3b8;padding:4px 6px;text-align:right;">Capaian/Target</th><th style="font-size:10px;color:#94a3b8;padding:4px 6px;text-align:right;">Skor</th></tr></thead><tbody>${itemRows}</tbody></table></details>
+        </div>`;
     },
 
     // ---------- RENDER ----------
@@ -187,7 +217,47 @@ const adminKpi = {
             <button onclick="adminKpi.openItemModal('employee')" style="background:#7c3aed;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;"><i class="fas fa-plus"></i> Tambah Item</button>
         </div>`;
 
-        wrap.innerHTML = jd + kpiHeader + this._renderItems(this.empItems, 'employee');
+        wrap.innerHTML = this._renderScoreCard() + jd + kpiHeader + this._renderItems(this.empItems, 'employee');
+    },
+
+    // ---------- VERIFIKASI CAPAIAN HARIAN ----------
+    async openVerifyModal() {
+        if (!this.currentUserId) return;
+        const modal = document.getElementById('modal-kpi-verify');
+        const body = document.getElementById('kpi-verify-body');
+        modal.style.display = 'flex';
+        body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px;"><i class="fas fa-sync fa-spin"></i> Memuat capaian...</div>';
+        const a = this._actor();
+        try {
+            const res = await api.post({ action: 'getKpiDaily', userId: this.currentUserId, actor_id: a.actor_id, bulan: this.empBulan });
+            const daily = (res && res.success) ? (res.data || []) : [];
+            this.empDaily = daily;
+            if (!daily.length) { body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px;">Belum ada capaian yang diisi karyawan bulan ini.</div>'; return; }
+            const itemName = {}; (this.empItems || []).forEach(it => itemName[String(it.id)] = it.indikator);
+            daily.sort((x, y) => (y.tanggal).localeCompare(x.tanggal));
+            body.innerHTML = daily.map(r => {
+                const st = String(r.status).toUpperCase();
+                const stColor = st === 'VERIFIED' ? '#16a34a' : (st === 'REJECTED' ? '#dc2626' : '#a16207');
+                const stBg = st === 'VERIFIED' ? '#dcfce7' : (st === 'REJECTED' ? '#fee2e2' : '#fef9c3');
+                return `<div style="display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #f1f5f9;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:12px;font-weight:600;color:#1e293b;">${this._esc(itemName[String(r.kpi_item_id)] || ('Item ' + r.kpi_item_id))}</div>
+                        <div style="font-size:11px;color:#64748b;">${this._esc(r.tanggal)} · nilai <b>${r.nilai}</b> <span style="background:${stBg};color:${stColor};padding:1px 6px;border-radius:4px;font-size:10px;">${st}</span></div>
+                    </div>
+                    <button onclick="adminKpi.verifyDaily('${this._esc(r.id)}','VERIFIED')" title="Verifikasi" style="background:#dcfce7;color:#15803d;border:none;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;"><i class="fas fa-check"></i></button>
+                    <button onclick="adminKpi.verifyDaily('${this._esc(r.id)}','REJECTED')" title="Tolak" style="background:#fee2e2;color:#dc2626;border:none;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;"><i class="fas fa-times"></i></button>
+                </div>`;
+            }).join('');
+        } catch (e) { body.innerHTML = `<div style="color:#ef4444;padding:20px;">Error: ${e.message}</div>`; }
+    },
+
+    async verifyDaily(id, status) {
+        const a = this._actor();
+        try {
+            const res = await api.post({ action: 'verifyKpiDaily', id: id, status: status, actor_id: a.actor_id, actor_name: a.actor_name });
+            if (res && res.success) { this.openVerifyModal(); this.loadEmployeeKpi(); }
+            else alert('❌ ' + ((res && res.error) || 'gagal'));
+        } catch (e) { alert('❌ Error: ' + e.message); }
     },
 
     // ---------- ITEM MODAL ----------
