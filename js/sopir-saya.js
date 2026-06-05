@@ -7,6 +7,7 @@ const sopirSaya = {
     data: [],
     today: '',
     rate: 0,
+    todaySopir: null,
 
     _esc(s) {
         return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -30,7 +31,8 @@ const sopirSaya = {
                 this.data = res.data || [];
                 this.today = res.today || '';
                 this.rate = Number(res.rate) || 0;
-            } else { this.data = []; }
+                this.todaySopir = res.todaySopir || null;
+            } else { this.data = []; this.todaySopir = null; }
         } catch (e) { this.data = []; }
         this.render();
     },
@@ -55,10 +57,6 @@ const sopirSaya = {
         let honorBulan = 0, tripBulan = 0;
         this.data.forEach(t => { if (t.status === 'DISETUJUI' && String(t.tanggal).substring(0, 7) === bln) { honorBulan += Number(t.honor) || 0; tripBulan++; } });
 
-        // jadwal hari ini yang belum dikonfirmasi
-        const todayTrip = this.data.find(t => t.tanggal === this.today && t.status === 'DIJADWALKAN');
-        const todayPending = this.data.find(t => t.tanggal === this.today && (t.status === 'PENDING' || t.status === 'DISETUJUI'));
-
         let html = `
         <div style="background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;border-radius:14px;padding:18px;margin-bottom:16px;">
             <div style="font-size:12px;opacity:0.9;">Honor Sopir Bulan Ini</div>
@@ -66,23 +64,25 @@ const sopirSaya = {
             <div style="font-size:11px;opacity:0.85;">${tripBulan} berangkat disetujui · ${this._rp(this.rate)}/berangkat</div>
         </div>`;
 
-        // Kartu aksi hari ini
-        if (todayTrip) {
+        // Kartu aksi hari ini — berdasarkan status efektif (pola/ganti) dari server
+        const ts = this.todaySopir;
+        if (ts && (ts.status === 'POLA' || ts.status === 'DIJADWALKAN')) {
             html += `
             <div style="background:#fff;border:2px solid #0ea5e9;border-radius:12px;padding:16px;margin-bottom:16px;">
-                <div style="font-size:13px;font-weight:700;color:#0369a1;margin-bottom:4px;"><i class="fas fa-truck"></i> Kamu dijadwalkan jadi sopir hari ini</div>
+                <div style="font-size:13px;font-weight:700;color:#0369a1;margin-bottom:4px;"><i class="fas fa-truck"></i> Kamu sopir hari ini</div>
                 <div style="font-size:12px;color:#64748b;margin-bottom:10px;">Konfirmasi setelah selesai berangkat. Isi tujuan/catatan (opsional).</div>
                 <textarea id="sopir-catatan" rows="2" placeholder="Mis: antar ke Wonosobo & Magelang" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:10px;resize:vertical;"></textarea>
-                <button onclick="sopirSaya.konfirmasi('${this._esc(todayTrip.id)}')" id="sopir-btn-konfirm" style="width:100%;background:#0ea5e9;color:#fff;border:none;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;"><i class="fas fa-check"></i> Konfirmasi Berangkat (${this._rp(this.rate)})</button>
+                <button onclick="sopirSaya.konfirmasi()" id="sopir-btn-konfirm" style="width:100%;background:#0ea5e9;color:#fff;border:none;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;"><i class="fas fa-check"></i> Konfirmasi Berangkat (${this._rp(this.rate)})</button>
             </div>`;
-        } else if (todayPending) {
-            const acc = todayPending.status === 'DISETUJUI';
+        } else if (ts && (ts.status === 'PENDING' || ts.status === 'DISETUJUI')) {
+            const acc = ts.status === 'DISETUJUI';
+            const todayRow = this.data.find(t => t.tanggal === this.today);
             html += `
             <div style="background:${acc ? '#dcfce7' : '#fef9c3'};border-radius:12px;padding:14px 16px;margin-bottom:16px;">
                 <div style="font-size:13px;font-weight:700;color:${acc ? '#166534' : '#854d0e'};">
                     <i class="fas fa-${acc ? 'check-circle' : 'hourglass-half'}"></i> ${acc ? 'Keberangkatan hari ini sudah disetujui ✓' : 'Keberangkatan hari ini menunggu ACC admin'}
                 </div>
-                ${todayPending.catatan ? `<div style="font-size:12px;color:#475569;margin-top:5px;">Catatan: ${this._esc(todayPending.catatan)}</div>` : ''}
+                ${todayRow && todayRow.catatan ? `<div style="font-size:12px;color:#475569;margin-top:5px;">Catatan: ${this._esc(todayRow.catatan)}</div>` : ''}
             </div>`;
         }
 
@@ -110,13 +110,13 @@ const sopirSaya = {
         wrap.innerHTML = html;
     },
 
-    async konfirmasi(id) {
+    async konfirmasi() {
         const btn = document.getElementById('sopir-btn-konfirm');
         const catatan = (document.getElementById('sopir-catatan') || {}).value || '';
         if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> Menyimpan...'; }
         const a = this._actor();
         try {
-            const res = await api.post({ action: 'konfirmasiSopir', id: id, userId: a.id, catatan: catatan });
+            const res = await api.post({ action: 'konfirmasiSopir', userId: a.id, catatan: catatan });
             if (!res || !res.success) {
                 alert('❌ ' + ((res && res.error) || 'Gagal konfirmasi'));
                 if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Konfirmasi Berangkat'; }
