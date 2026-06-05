@@ -146,6 +146,12 @@ const router = {
                 case 'kpi-saya':
                     if (window.kpiSaya) kpiSaya.init();
                     break;
+                case 'sopir-saya':
+                    if (window.sopirSaya) sopirSaya.init();
+                    break;
+                case 'admin-sopir':
+                    if (window.adminSopir) adminSopir.init();
+                    break;
             }
         } catch (e) {
             console.error("Router: Gagal init halaman " + page, e);

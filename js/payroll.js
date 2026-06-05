@@ -56,15 +56,16 @@ const payroll = {
     computeFinalTotal(p) {
         const bonus = parseFloat(p.bonusCustom || 0);
         const komisiLive = parseFloat(p.komisiLive || 0);
+        const honorSopir = parseFloat(p.honorSopir || 0);
         const bensin = parseFloat(p.tunjBensinTerbayar || 0);
         const kost = parseFloat(p.tunjKost || 0);
         const potIzin = parseFloat(p.potonganIzin || 0);
         const potPulCepat = parseFloat(p.potonganPulangCepat || 0);
         const potMangkir = parseFloat(p.potonganMangkir || 0);
         if (p.jenis_gaji === 'per_jam') {
-            return p.basisGaji - p.bpjs + bonus + komisiLive + bensin + kost;
+            return p.basisGaji - p.bpjs + bonus + komisiLive + honorSopir + bensin + kost;
         }
-        return (p.gapok + p.bonusLembur + bonus + komisiLive + bensin + kost) - (p.bpjs + p.dendaTelat + potIzin + potPulCepat + potMangkir);
+        return (p.gapok + p.bonusLembur + bonus + komisiLive + honorSopir + bensin + kost) - (p.bpjs + p.dendaTelat + potIzin + potPulCepat + potMangkir);
     },
 
     async calculate() {
@@ -109,19 +110,27 @@ const payroll = {
             // Rekap Komisi Live (streamer) untuk periode ini — hanya sesi yang sudah di-ACC
             const fmtYmd = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
             let komisiMap = {};
+            let sopirMap = {};
             try {
                 const actorId = (typeof auth !== 'undefined' && auth.user && auth.user.id) || '';
-                const resKom = await api.post({ action: 'getLiveKomisiByPeriode', start: fmtYmd(startDate), end: fmtYmd(endDate), actor_id: actorId });
+                const [resKom, resSopir] = await Promise.all([
+                    api.post({ action: 'getLiveKomisiByPeriode', start: fmtYmd(startDate), end: fmtYmd(endDate), actor_id: actorId }),
+                    api.post({ action: 'getSopirHonorByPeriode', start: fmtYmd(startDate), end: fmtYmd(endDate), actor_id: actorId })
+                ]);
                 if (resKom && resKom.success) komisiMap = resKom.data || {};
-            } catch (e) { /* abaikan — komisi 0 */ }
+                if (resSopir && resSopir.success) sopirMap = resSopir.data || {};
+            } catch (e) { /* abaikan — komisi/honor 0 */ }
 
-            // Apply bonus custom dari sheet + komisi live ke calculatedData + recalc total
+            // Apply bonus custom dari sheet + komisi live + honor sopir ke calculatedData + recalc total
             const bonusMap = await this.loadBonusMap();
             this.calculatedData.forEach(row => {
                 row.bonusCustom = parseFloat(bonusMap[row.id] || 0);
                 const k = komisiMap[String(row.id)];
                 row.komisiLive = k ? (Number(k.komisi) || 0) : 0;
                 row.komisiLiveSesi = k ? (Number(k.sesi) || 0) : 0;
+                const sp = sopirMap[String(row.id)];
+                row.honorSopir = sp ? (Number(sp.honor) || 0) : 0;
+                row.honorSopirTrips = sp ? (Number(sp.trips) || 0) : 0;
                 row.totalGaji = this.computeFinalTotal(row);
             });
             this.renderTable(this.calculatedData);
@@ -321,6 +330,8 @@ const payroll = {
             potonganMangkir: potonganMangkir,
             komisiLive: 0,
             komisiLiveSesi: 0,
+            honorSopir: 0,
+            honorSopirTrips: 0,
             totalGaji: totalGaji
         };
     },
@@ -381,6 +392,7 @@ const payroll = {
                 <td style="color:#ef4444;">-${p.bpjs.toLocaleString('id-ID')}</td>
                 <td style="background:${isSent ? '#f1f5f9' : '#fef9c3'}; padding:6px;">
                     ${Number(p.komisiLive || 0) > 0 ? `<div style="font-size:10px; color:#0f766e; font-weight:700; text-align:right; margin-bottom:4px;">🎥 Komisi Live: +${Number(p.komisiLive).toLocaleString('id-ID')}<br><span style="color:#94a3b8; font-weight:500;">(${p.komisiLiveSesi || 0} sesi · otomatis)</span></div>` : ''}
+                    ${Number(p.honorSopir || 0) > 0 ? `<div style="font-size:10px; color:#0369a1; font-weight:700; text-align:right; margin-bottom:4px;">🚚 Honor Sopir: +${Number(p.honorSopir).toLocaleString('id-ID')}<br><span style="color:#94a3b8; font-weight:500;">(${p.honorSopirTrips || 0} berangkat · otomatis)</span></div>` : ''}
                     ${bonusInput}
                 </td>
                 <td data-total-id="${p.id}" style="background:#f0fdf4; font-weight:700; color:#166534;">
@@ -606,6 +618,8 @@ const payroll = {
                     bonusCustom: d.bonusCustom || 0,
                     komisiLive: d.komisiLive || 0,
                     komisiLiveSesi: d.komisiLiveSesi || 0,
+                    honorSopir: d.honorSopir || 0,
+                    honorSopirTrips: d.honorSopirTrips || 0,
                     tunjBensinFull: d.tunjBensinFull || 0,
                     tunjBensinTerbayar: d.tunjBensinTerbayar || 0,
                     tunjKost: d.tunjKost || 0,
@@ -759,6 +773,9 @@ const payroll = {
                     `}
                     ${Number(data.komisiLive || 0) > 0 ? `
                     <tr><td style="padding:8px 0; color:#0f766e;">(+) KOMISI LIVE (${data.komisiLiveSesi || 0} sesi)</td><td style="text-align:right; color:#0f766e;">+ Rp ${Number(data.komisiLive).toLocaleString('id-ID')}</td></tr>
+                    ` : ''}
+                    ${Number(data.honorSopir || 0) > 0 ? `
+                    <tr><td style="padding:8px 0; color:#0369a1;">(+) HONOR SOPIR (${data.honorSopirTrips || 0} berangkat)</td><td style="text-align:right; color:#0369a1;">+ Rp ${Number(data.honorSopir).toLocaleString('id-ID')}</td></tr>
                     ` : ''}
                     ${Number(data.bonusCustom || 0) > 0 ? `
                     <tr><td style="padding:8px 0; color:#854d0e;">(+) BONUS CUSTOM</td><td style="text-align:right; color:#854d0e;">+ Rp ${Number(data.bonusCustom).toLocaleString('id-ID')}</td></tr>
