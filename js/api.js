@@ -12,6 +12,16 @@ const api = {
         // Aksi BACA (idempoten) aman diulang via GET kalau respons POST rusak.
         // Aksi SIMPAN/UBAH TIDAK boleh diulang (POST sudah tereksekusi di server → cegah duplikat).
         const isRead = /^get/i.test(action);
+
+        // LANGKAH 1: aksi BACA pakai GET LANGSUNG (1 round-trip = lebih cepat, dan
+        // lepas dari POST yang sedang bermasalah). POST dipakai sebagai cadangan kalau GET gagal.
+        if (isRead) {
+            try {
+                const viaGet = await this._postViaGet(data);
+                if (viaGet) return viaGet;
+            } catch (e) { /* GET gagal → lanjut coba POST di bawah */ }
+        }
+
         try {
             console.log("API POST:", action);
             const response = await fetch(API_BASE_URL, {
