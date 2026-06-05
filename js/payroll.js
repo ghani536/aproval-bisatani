@@ -206,6 +206,9 @@ const payroll = {
         const gajiPokok = parseFloat(emp.gaji_pokok || 0);
         const tarifPerJam = parseFloat(emp.tarif_per_jam || 0);
         const isPerJam = (emp.jenis_gaji === 'per_jam');
+        // Gudang = jam kerja fleksibel (mulai bisa pagi/siang, yang penting 8 jam) → BEBAS denda telat.
+        // Tetap dinilai 8 jam via potongan pulang cepat (durasi < 8 jam).
+        const isFleksibel = String(emp.department || '').toLowerCase().indexOf('gudang') !== -1;
         const hariKerjaPerBulan = parseInt(this.config.hari_kerja_per_bulan || 25);
         const jamKerjaPerHari = parseFloat(this.config.jam_kerja_per_hari || 8);
         const aktifkanPotongan = String(this.config.aktifkan_potongan_pulang_cepat || 'true') === 'true';
@@ -240,7 +243,8 @@ const payroll = {
 
         const bpjs = parseInt(emp.bpjs || 0);
         const bonusLembur = Math.round(jamLemburTotal * tarifLembur);
-        const nominalDenda = Math.round(totalMenitTelat * dendaPerMenit);
+        // Denda telat: 0 untuk per-jam (dibayar per jam) & gudang (jam fleksibel).
+        const nominalDenda = (isPerJam || isFleksibel) ? 0 : Math.round(totalMenitTelat * dendaPerMenit);
 
         // Tunjangan: bensin proporsional (hari_hadir / hari_kerja_per_bulan), kost flat
         const tunjBensinFull = parseFloat(emp.tunjangan_bensin || 0);
@@ -308,6 +312,7 @@ const payroll = {
             id: emp.id,
             name: emp.name,
             jenis_gaji: isPerJam ? 'per_jam' : 'bulanan',
+            fleksibel: isFleksibel,
             tarifPerJam: tarifPerJam,
             jamKerjaTotal: jamKerjaTotal,
             gapok: gajiPokok,
@@ -388,7 +393,7 @@ const payroll = {
                 </td>
                 <td style="text-align:center; font-weight:bold; color:#2563eb;">${p.lemburJam.toFixed(2)}j</td>
                 <td style="color:#10b981; font-weight:600;">${isPerJam ? '<small>(incl. di basis)</small>' : '+' + p.bonusLembur.toLocaleString('id-ID')}</td>
-                <td style="color:#ef4444;">${isPerJam ? '<small>n/a</small>' : '-' + p.dendaTelat.toLocaleString('id-ID') + '<br><small>(' + p.menitTelat + ' m)</small>'}</td>
+                <td style="color:#ef4444;">${(isPerJam || p.fleksibel) ? '<small style="color:#94a3b8;">fleksibel</small>' : '-' + p.dendaTelat.toLocaleString('id-ID') + '<br><small>(' + p.menitTelat + ' m)</small>'}</td>
                 <td style="color:#ef4444;">-${p.bpjs.toLocaleString('id-ID')}</td>
                 <td style="background:${isSent ? '#f1f5f9' : '#fef9c3'}; padding:6px;">
                     ${Number(p.komisiLive || 0) > 0 ? `<div style="font-size:10px; color:#0f766e; font-weight:700; text-align:right; margin-bottom:4px;">🎥 Komisi Live: +${Number(p.komisiLive).toLocaleString('id-ID')}<br><span style="color:#94a3b8; font-weight:500;">(${p.komisiLiveSesi || 0} sesi · otomatis)</span></div>` : ''}
@@ -768,7 +773,9 @@ const payroll = {
                     ` : `
                     <tr><td style="padding:8px 0;">GAJI POKOK</td><td style="text-align:right;">Rp ${data.gapok.toLocaleString('id-ID')}</td></tr>
                     <tr><td style="padding:8px 0; color:#10b981;">(+) LEMBUR (${data.lemburJam.toFixed(2)}j)</td><td style="text-align:right; color:#10b981;">+ Rp ${data.bonusLembur.toLocaleString('id-ID')}</td></tr>
-                    <tr><td style="padding:8px 0; color:#ef4444;">(-) DENDA TELAT (${data.menitTelat} Mnt)</td><td style="text-align:right; color:#ef4444;">- Rp ${data.dendaTelat.toLocaleString('id-ID')}</td></tr>
+                    ${data.fleksibel
+                        ? `<tr><td style="padding:8px 0; color:#94a3b8;">JAM KERJA</td><td style="text-align:right; color:#94a3b8;">fleksibel (8 jam)</td></tr>`
+                        : `<tr><td style="padding:8px 0; color:#ef4444;">(-) DENDA TELAT (${data.menitTelat} Mnt)</td><td style="text-align:right; color:#ef4444;">- Rp ${data.dendaTelat.toLocaleString('id-ID')}</td></tr>`}
                     <tr><td style="padding:8px 0; color:#ef4444;">(-) POTONGAN BPJS</td><td style="text-align:right; color:#ef4444;">- Rp ${data.bpjs.toLocaleString('id-ID')}</td></tr>
                     `}
                     ${Number(data.komisiLive || 0) > 0 ? `
