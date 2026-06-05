@@ -13,12 +13,18 @@ const api = {
         // Aksi SIMPAN/UBAH TIDAK boleh diulang (POST sudah tereksekusi di server → cegah duplikat).
         const isRead = /^get/i.test(action);
 
+        // CACHE: aksi baca yang masih segar → balas SEKETIKA dari memori (pindah menu jadi instan).
+        if (isRead) {
+            const cached = this._getCache(data);
+            if (cached) return cached;
+        }
+
         // LANGKAH 1: aksi BACA pakai GET LANGSUNG (1 round-trip = lebih cepat, dan
         // lepas dari POST yang sedang bermasalah). POST dipakai sebagai cadangan kalau GET gagal.
         if (isRead) {
             try {
                 const viaGet = await this._postViaGet(data);
-                if (viaGet) return viaGet;
+                if (viaGet) { this._setCache(data, viaGet); return viaGet; }
             } catch (e) { /* GET gagal → lanjut coba POST di bawah */ }
         }
 
@@ -33,30 +39,49 @@ const api = {
 
             const text = await response.text();
             try {
-                return JSON.parse(text);
+                const result = JSON.parse(text);
+                if (isRead) this._setCache(data, result);
+                else this.clearCache(); // simpan/ubah → buang cache agar baca berikutnya segar
+                return result;
             } catch (parseErr) {
                 // POST tereksekusi di server tapi respons rusak (balas HTML, gangguan sisi Google).
                 if (isRead) {
                     // Baca: ambil ulang datanya via GET (aman, idempoten)
                     const viaGet = await this._postViaGet(data);
-                    if (viaGet) return viaGet;
+                    if (viaGet) { this._setCache(data, viaGet); return viaGet; }
                     return { success: false, error: 'Gagal memuat (server sibuk)' };
                 }
                 // Simpan/ubah: data SUDAH tersimpan via POST → JANGAN ulang via GET (hindari duplikat)
+                this.clearCache();
                 return { success: true, _unconfirmed: true };
             }
         } catch (error) {
             console.error('POST Error:', error);
             // Error jaringan (POST mungkin tidak tereksekusi).
             if (isRead) {
-                try { const viaGet = await this._postViaGet(data); if (viaGet) return viaGet; } catch (e) { /* lanjut */ }
-            }
+                try { const viaGet = await this._postViaGet(data); if (viaGet) { this._setCache(data, viaGet); return viaGet; } } catch (e) { /* lanjut */ }
+            } else { this.clearCache(); }
             if (action === 'saveAttendance' || action === 'saveEmployee') {
                 return { success: true };
             }
             return { success: false, error: 'Server Sibuk, Coba Lagi' };
         }
     },
+
+    // Cache baca di memori (TTL pendek). Pindah menu yang sudah pernah dibuka = instan.
+    // Dibuang otomatis tiap ada aksi simpan/ubah agar data selalu benar setelah aksi.
+    _readCache: {},
+    _CACHE_TTL: 30000,
+    _cacheKey(data) { try { return JSON.stringify(data); } catch (e) { return String(data && data.action); } },
+    _getCache(data) {
+        const e = this._readCache[this._cacheKey(data)];
+        if (e && Date.now() < e.exp) return e.data;
+        return null;
+    },
+    _setCache(data, res) {
+        if (res && res.success) this._readCache[this._cacheKey(data)] = { data: res, exp: Date.now() + this._CACHE_TTL };
+    },
+    clearCache() { this._readCache = {}; },
 
     // Fallback BACA: ambil data via GET saat respons POST rusak. Hanya dipakai
     // untuk aksi get* (idempoten). Nilai besar di-skip agar URL tidak kepanjangan.
