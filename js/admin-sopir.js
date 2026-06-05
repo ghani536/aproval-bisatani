@@ -1,12 +1,14 @@
 /**
- * Admin - Jadwal & ACC Tugas Sopir (rotasi gudang)
- * Admin menjadwalkan sopir (Sen–Kamis), karyawan konfirmasi, admin ACC → honor.
+ * Admin - Sopir (rotasi gudang): Pola Mingguan + Ganti (izin) + ACC keberangkatan.
+ * Pola tetap per hari (Sen–Kamis) → berlaku otomatis tiap minggu, tak perlu isi tanggal.
  */
 const adminSopir = {
     employees: [],
     trips: [],
+    pola: {},
     rate: 0,
     bulan: '',
+    HARI: { 1: 'Senin', 2: 'Selasa', 3: 'Rabu', 4: 'Kamis' },
 
     _esc(s) {
         return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -44,14 +46,16 @@ const adminSopir = {
         const a = this._actor();
         const r = this._range(this.bulan);
         try {
-            const [resEmp, resTrip, resRate] = await Promise.all([
+            const [resEmp, resTrip, resRate, resPola] = await Promise.all([
                 this.employees.length ? Promise.resolve({ success: true, data: this.employees }) : api.post({ action: 'getEmployees' }),
                 api.post({ action: 'getJadwalSopir', start: r.start, end: r.end, actor_id: a.actor_id }),
-                api.post({ action: 'getSopirHonorRate' })
+                api.post({ action: 'getSopirHonorRate' }),
+                api.post({ action: 'getSopirPola' })
             ]);
             if (resEmp && resEmp.success) this.employees = resEmp.data || [];
             this.trips = (resTrip && resTrip.success) ? (resTrip.data || []) : [];
             this.rate = (resRate && resRate.success) ? (Number(resRate.rate) || 0) : 0;
+            this.pola = (resPola && resPola.success) ? (resPola.data || {}) : {};
         } catch (e) { this.trips = []; }
         this.render();
     },
@@ -61,7 +65,16 @@ const adminSopir = {
             const s = (String(e.department || '') + ' ' + String(e.position || e.jabatan || '')).toLowerCase();
             return s.indexOf('gudang') !== -1;
         });
-        return g.length ? g : this.employees; // fallback: kalau tak ada label gudang, tampilkan semua
+        return g.length ? g : this.employees;
+    },
+    _opts(selectedId) {
+        const emps = this._gudangEmployees();
+        let o = `<option value="">— kosong —</option>`;
+        emps.forEach(e => {
+            const id = this._esc(e.id);
+            o += `<option value="${id}" ${String(e.id) === String(selectedId) ? 'selected' : ''}>${this._esc(e.name || e.nama)}</option>`;
+        });
+        return o;
     },
 
     _badge(st) {
@@ -78,44 +91,59 @@ const adminSopir = {
     render() {
         const wrap = document.getElementById('admin-sopir-content');
         if (!wrap) return;
-        const emps = this._gudangEmployees();
-        const opts = emps.map(e => `<option value="${this._esc(e.id)}">${this._esc(e.name || e.nama)}</option>`).join('');
-
         const pending = this.trips.filter(t => t.status === 'PENDING').length;
         const honorBulan = this.trips.filter(t => t.status === 'DISETUJUI').reduce((s, t) => s + (Number(t.honor) || 0), 0);
 
+        // ---- Pola Mingguan ----
+        let polaRows = '';
+        [1, 2, 3, 4].forEach(wd => {
+            const cur = this.pola[String(wd)] ? this.pola[String(wd)].userId : '';
+            polaRows += `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f1f5f9;">
+                <div style="width:62px;font-size:13px;font-weight:600;color:#334155;">${this.HARI[wd]}</div>
+                <select onchange="adminSopir.savePola(${wd}, this.value)" style="flex:1;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">${this._opts(cur)}</select>
+            </div>`;
+        });
+
         let html = `
-        <!-- Pengaturan honor -->
+        <!-- Honor -->
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <div style="font-size:13px;color:#334155;font-weight:600;"><i class="fas fa-money-bill-wave" style="color:#0ea5e9;"></i> Honor per berangkat:</div>
             <input type="number" id="sopir-rate" value="${this.rate}" min="0" step="1000" style="width:130px;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;">
             <button onclick="adminSopir.saveRate()" style="background:#0ea5e9;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">Simpan</button>
         </div>
 
-        <!-- Form jadwalkan -->
+        <!-- Pola mingguan -->
         <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
-            <div style="font-size:13px;font-weight:700;color:#334155;margin-bottom:10px;"><i class="fas fa-calendar-plus" style="color:#0ea5e9;"></i> Jadwalkan Sopir <span style="font-weight:500;color:#94a3b8;font-size:11px;">(Senin–Kamis)</span></div>
+            <div style="font-size:13px;font-weight:700;color:#334155;margin-bottom:4px;"><i class="fas fa-calendar-week" style="color:#0ea5e9;"></i> Pola Sopir Mingguan</div>
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;">Set sekali → berlaku otomatis tiap minggu. Tak perlu isi tanggal.</div>
+            ${polaRows}
+        </div>
+
+        <!-- Ganti (izin) -->
+        <div style="background:#fff;border:1px solid #fde68a;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px;"><i class="fas fa-exchange-alt"></i> Ganti Sopir (izin/khusus)</div>
+            <div style="font-size:11px;color:#a16207;margin-bottom:10px;">Untuk 1 tanggal tertentu saja (mis. yang giliran izin). Minggu depan balik ke pola.</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                <select id="sopir-emp" style="flex:1;min-width:150px;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">${opts}</select>
                 <input type="date" id="sopir-date" style="padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">
-                <button onclick="adminSopir.addJadwal()" style="background:#0ea5e9;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;"><i class="fas fa-plus"></i> Jadwalkan</button>
+                <select id="sopir-emp" style="flex:1;min-width:140px;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">${this._opts('')}</select>
+                <button onclick="adminSopir.ganti()" style="background:#f59e0b;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;"><i class="fas fa-exchange-alt"></i> Ganti</button>
             </div>
         </div>
 
-        <!-- Filter + ringkasan -->
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
-            <input type="month" value="${this.bulan}" onchange="adminSopir.changeBulan(this.value)" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">
-            <div style="font-size:12px;color:#475569;">
-                ${pending ? `<span style="background:#ef4444;color:#fff;padding:2px 9px;border-radius:20px;font-weight:700;">${pending} perlu ACC</span> · ` : ''}
-                Honor disetujui: <b style="color:#0f766e;">${this._rp(honorBulan)}</b>
-            </div>
+        <!-- Keberangkatan -->
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+            <div style="font-size:13px;font-weight:700;color:#334155;"><i class="fas fa-truck" style="color:#0ea5e9;"></i> Keberangkatan</div>
+            <input type="month" value="${this.bulan}" onchange="adminSopir.changeBulan(this.value)" style="padding:7px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;">
         </div>
-
-        <!-- Daftar -->
+        <div style="font-size:12px;color:#475569;margin-bottom:10px;">
+            ${pending ? `<span style="background:#ef4444;color:#fff;padding:2px 9px;border-radius:20px;font-weight:700;">${pending} perlu ACC</span> · ` : ''}
+            Honor disetujui bulan ini: <b style="color:#0f766e;">${this._rp(honorBulan)}</b>
+        </div>
         <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">`;
 
-        if (!this.trips.length) {
-            html += '<div style="color:#94a3b8;font-size:13px;text-align:center;padding:24px;">Belum ada jadwal sopir di bulan ini.</div>';
+        const visible = this.trips.filter(t => t.status !== 'DITOLAK' || true); // tampilkan semua
+        if (!visible.length) {
+            html += '<div style="color:#94a3b8;font-size:13px;text-align:center;padding:24px;">Belum ada keberangkatan di bulan ini.<br><span style="font-size:11px;">Muncul otomatis saat karyawan konfirmasi berangkat.</span></div>';
         } else {
             this.trips.forEach(t => {
                 let actions = '';
@@ -145,6 +173,17 @@ const adminSopir = {
 
     changeBulan(v) { this.bulan = v || this._thisBulan(); this.load(); },
 
+    async savePola(weekday, userId) {
+        const a = this._actor();
+        const res = await api.post({ action: 'saveSopirPola', weekday: weekday, userId: userId, actor_id: a.actor_id, actor_name: a.actor_name });
+        if (res && res.success) {
+            if (userId) {
+                const e = this._gudangEmployees().find(x => String(x.id) === String(userId));
+                this.pola[String(weekday)] = { userId: userId, nama: e ? (e.name || e.nama) : '' };
+            } else { delete this.pola[String(weekday)]; }
+        } else alert('❌ ' + ((res && res.error) || 'gagal'));
+    },
+
     async saveRate() {
         const v = Number((document.getElementById('sopir-rate') || {}).value);
         if (isNaN(v) || v < 0) { alert('Nominal tidak valid.'); return; }
@@ -154,11 +193,11 @@ const adminSopir = {
         else alert('❌ ' + ((res && res.error) || 'gagal'));
     },
 
-    async addJadwal() {
-        const userId = (document.getElementById('sopir-emp') || {}).value;
+    async ganti() {
         const tanggal = (document.getElementById('sopir-date') || {}).value;
-        if (!userId || !tanggal) { alert('Pilih karyawan & tanggal.'); return; }
-        if (!this._isSenKam(tanggal)) { alert('⚠️ Jadwal sopir hanya Senin–Kamis.'); return; }
+        const userId = (document.getElementById('sopir-emp') || {}).value;
+        if (!tanggal || !userId) { alert('Pilih tanggal & pengganti.'); return; }
+        if (!this._isSenKam(tanggal)) { alert('⚠️ Sopir hanya Senin–Kamis.'); return; }
         const a = this._actor();
         const res = await api.post({ action: 'addJadwalSopir', userId: userId, tanggal: tanggal, actor_id: a.actor_id, actor_name: a.actor_name });
         if (res && res.success) { await this.load(); }
@@ -166,7 +205,7 @@ const adminSopir = {
     },
 
     async hapus(id) {
-        if (!confirm('Hapus jadwal ini?')) return;
+        if (!confirm('Hapus keberangkatan ini?')) return;
         const a = this._actor();
         const res = await api.post({ action: 'deleteJadwalSopir', id: id, actor_id: a.actor_id, actor_name: a.actor_name });
         if (res && res.success) await this.load();
