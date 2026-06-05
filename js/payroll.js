@@ -293,15 +293,15 @@ const payroll = {
         let jamKerjaTotal = 0;
 
         if (isPerJam) {
-            // Per jam: bayar JAM KERJA AKTUAL (durasi masuk→pulang) per hari, di-cap di
-            // jam_kerja_per_hari (8j) — sisanya lewat jalur lembur. Hari yang ada MASUK tapi
-            // belum PULANG dipakai standar 8j (fallback; admin bisa koreksi via edit waktu).
+            // Per jam: bayar JAM KERJA AKTUAL apa adanya (durasi masuk→pulang per hari).
+            // TANPA cap 8j (kerja 9j dibayar 9j) & TANPA fallback (hari belum PULANG = belum
+            // dihitung sampai absen pulang tercatat). Jadi <8j dibayar <8j, >8j dibayar >8j.
             const durasiMap = this.hitungDurasiHarianMap(userLogs);
             let jamNormalAktual = 0;
             Object.keys(durasiMap).forEach(ymd => {
                 const dur = durasiMap[ymd];
-                if (dur == null) jamNormalAktual += jamKerjaPerHari; // masuk tanpa pulang → fallback standar
-                else jamNormalAktual += Math.max(0, Math.min(dur, jamKerjaPerHari)); // cap 8j, lembur terpisah
+                if (dur == null) return; // belum absen pulang → belum dihitung
+                jamNormalAktual += Math.max(0, dur); // jam aktual, tanpa dibulatkan/dibatasi
             });
             jamKerjaTotal = jamNormalAktual + jamLemburTotal;
             basisGaji = Math.round(jamKerjaTotal * tarifPerJam);
