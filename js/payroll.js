@@ -293,12 +293,17 @@ const payroll = {
         let jamKerjaTotal = 0;
 
         if (isPerJam) {
-            // Per jam: total_jam = (hari_hadir × jam_kerja_per_hari) + jam_lembur
-            // Cuti & Izin per jam → tidak dibayar (natural: tidak masuk = tidak ada hari_hadir)
-            // Pulang cepat per jam → natural: jam aktual sudah benar via hadirCount × jam_kerja_per_hari,
-            // tapi sebenarnya yang lebih akurat = jumlah jam kerja aktual (perlu mod). Untuk konsisten
-            // dengan logic existing pakai hari_hadir × standar.
-            jamKerjaTotal = (hadirCount * jamKerjaPerHari) + jamLemburTotal;
+            // Per jam: bayar JAM KERJA AKTUAL (durasi masuk→pulang) per hari, di-cap di
+            // jam_kerja_per_hari (8j) — sisanya lewat jalur lembur. Hari yang ada MASUK tapi
+            // belum PULANG dipakai standar 8j (fallback; admin bisa koreksi via edit waktu).
+            const durasiMap = this.hitungDurasiHarianMap(userLogs);
+            let jamNormalAktual = 0;
+            Object.keys(durasiMap).forEach(ymd => {
+                const dur = durasiMap[ymd];
+                if (dur == null) jamNormalAktual += jamKerjaPerHari; // masuk tanpa pulang → fallback standar
+                else jamNormalAktual += Math.max(0, Math.min(dur, jamKerjaPerHari)); // cap 8j, lembur terpisah
+            });
+            jamKerjaTotal = jamNormalAktual + jamLemburTotal;
             basisGaji = Math.round(jamKerjaTotal * tarifPerJam);
             totalGaji = basisGaji - bpjs + tunjBensinTerbayar + tunjKost;
         } else {
@@ -765,7 +770,7 @@ const payroll = {
                     <tr><td colspan="2"><hr style="border:0; border-top:1px solid #cbd5e1; margin:15px 0;"></td></tr>
 
                     ${data.jenis_gaji === 'per_jam' ? `
-                    <tr><td style="padding:8px 0;">JAM KERJA</td><td style="text-align:right;">${(data.hadir*8).toFixed(0)}j (${data.hadir} hari × 8j)</td></tr>
+                    <tr><td style="padding:8px 0;">JAM KERJA</td><td style="text-align:right;">${(data.jamKerjaTotal - data.lemburJam).toFixed(2)}j (${data.hadir} hari hadir)</td></tr>
                     <tr><td style="padding:8px 0;">JAM LEMBUR</td><td style="text-align:right;">${data.lemburJam.toFixed(2)}j</td></tr>
                     <tr><td style="padding:8px 0;">TARIF / JAM</td><td style="text-align:right;">Rp ${data.tarifPerJam.toLocaleString('id-ID')}</td></tr>
                     <tr><td style="padding:8px 0; color:#10b981;"><strong>(=) BASIS GAJI (${data.jamKerjaTotal.toFixed(2)}j)</strong></td><td style="text-align:right; color:#10b981;"><strong>Rp ${data.basisGaji.toLocaleString('id-ID')}</strong></td></tr>
