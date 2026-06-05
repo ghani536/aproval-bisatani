@@ -143,6 +143,9 @@ const auth = {
             document.querySelectorAll('.streamer-only').forEach(el => el.classList.toggle('hidden', !isStreamer));
             // Streamer: absen via menu Live, sembunyikan menu Absensi biasa
             document.querySelectorAll('.streamer-hide').forEach(el => el.classList.toggle('hidden', isStreamer));
+            // Menu khusus karyawan Gudang (rotasi sopir) — hanya untuk non-admin di gudang
+            const isGudang = !isAdmin && _ds.indexOf('gudang') !== -1;
+            document.querySelectorAll('.gudang-only').forEach(el => el.classList.toggle('hidden', !isGudang));
 
             if (isAdmin) {
                 if (adminMenu) adminMenu.classList.remove('hidden');
