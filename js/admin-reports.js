@@ -6,6 +6,18 @@ const adminReports = {
     allAttendance: [],
     employees: [],
 
+    // Lokasi koordinat mentah (reverse-geocode gagal saat absen) → jadikan link Google Maps.
+    _fmtLokasi(loc) {
+        const s = String(loc || '').trim();
+        if (!s) return '-';
+        const m = s.match(/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/);
+        if (m) {
+            const url = `https://www.google.com/maps?q=${m[1]},${m[2]}`;
+            return `<a href="${url}" target="_blank" rel="noopener" style="color:#0ea5e9;" title="Koordinat (nama tempat gagal terbaca) — klik lihat di Maps"><i class="fas fa-map-marker-alt"></i> ${s}</a>`;
+        }
+        return s;
+    },
+
     async init() {
         const tbody = document.getElementById('attendance-reports-body');
         if (!tbody) return;
@@ -149,7 +161,7 @@ async updateApproval(rowId, status) {
                     <td style="padding:10px;"><small>${log.timestamp}</small></td>
                     <td style="padding:10px;"><strong>${log.userName || log.userId}</strong></td>
                     <td style="padding:10px;"><span class="badge-${String(log.type).toLowerCase().replace(/_/g, '-')}">${log.type}</span></td>
-                    <td style="padding:10px;"><small>${log.location || '-'}</small></td>
+                    <td style="padding:10px;"><small>${adminReports._fmtLokasi(log.location)}</small></td>
                     <td style="text-align:center; padding:10px;">
                         ${log.thumbnail
                             ? `<img src="${log.thumbnail}" onclick="adminReports.openPhotoLazy(${finalRowId}, '${(log.userName || log.userId || '').replace(/'/g,"\\'")}', '${String(log.quote || '').replace(/'/g,"\\'").replace(/\n/g,' ')}')" style="width:42px; height:32px; object-fit:cover; border-radius:6px; cursor:zoom-in; border:1px solid #e2e8f0;" title="Klik untuk perbesar">`
