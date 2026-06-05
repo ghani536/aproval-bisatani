@@ -8,6 +8,7 @@ const sopirSaya = {
     today: '',
     rate: 0,
     todaySopir: null,
+    sudahPulang: false,
 
     _esc(s) {
         return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -32,6 +33,7 @@ const sopirSaya = {
                 this.today = res.today || '';
                 this.rate = Number(res.rate) || 0;
                 this.todaySopir = res.todaySopir || null;
+                this.sudahPulang = !!res.sudahPulang;
             } else { this.data = []; this.todaySopir = null; }
         } catch (e) { this.data = []; }
         this.render();
@@ -67,12 +69,16 @@ const sopirSaya = {
         // Kartu aksi hari ini — berdasarkan status efektif (pola/ganti) dari server
         const ts = this.todaySopir;
         if (ts && (ts.status === 'POLA' || ts.status === 'DIJADWALKAN')) {
+            const bisa = this.sudahPulang;
             html += `
             <div style="background:#fff;border:2px solid #0ea5e9;border-radius:12px;padding:16px;margin-bottom:16px;">
                 <div style="font-size:13px;font-weight:700;color:#0369a1;margin-bottom:4px;"><i class="fas fa-truck"></i> Kamu sopir hari ini</div>
-                <div style="font-size:12px;color:#64748b;margin-bottom:10px;">Konfirmasi setelah selesai berangkat. Isi tujuan/catatan (opsional).</div>
-                <textarea id="sopir-catatan" rows="2" placeholder="Mis: antar ke Wonosobo & Magelang" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:10px;resize:vertical;"></textarea>
-                <button onclick="sopirSaya.konfirmasi()" id="sopir-btn-konfirm" style="width:100%;background:#0ea5e9;color:#fff;border:none;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;"><i class="fas fa-check"></i> Konfirmasi Berangkat (${this._rp(this.rate)})</button>
+                ${bisa
+                    ? `<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Konfirmasi setelah selesai berangkat. Isi tujuan/catatan (opsional).</div>
+                       <textarea id="sopir-catatan" rows="2" placeholder="Mis: antar ke Wonosobo & Magelang" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:10px;resize:vertical;"></textarea>
+                       <button onclick="sopirSaya.konfirmasi()" id="sopir-btn-konfirm" style="width:100%;background:#0ea5e9;color:#fff;border:none;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;"><i class="fas fa-check"></i> Konfirmasi Berangkat (${this._rp(this.rate)})</button>`
+                    : `<div style="background:#fef9c3;color:#854d0e;border-radius:8px;padding:11px;font-size:12.5px;"><i class="fas fa-lock"></i> Selesaikan <b>Absen Pulang</b> dulu, baru bisa konfirmasi berangkat sopir.</div>`
+                }
             </div>`;
         } else if (ts && (ts.status === 'PENDING' || ts.status === 'DISETUJUI')) {
             const acc = ts.status === 'DISETUJUI';
