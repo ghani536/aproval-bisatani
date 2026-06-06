@@ -303,7 +303,8 @@ const payroll = {
                 if (dur == null) return; // belum absen pulang → belum dihitung
                 jamNormalAktual += Math.max(0, dur); // jam aktual, tanpa dibulatkan/dibatasi
             });
-            jamKerjaTotal = jamNormalAktual + jamLemburTotal;
+            // Per-jam TIDAK ada lembur terpisah — semua jam sudah masuk durasi masuk→pulang.
+            jamKerjaTotal = jamNormalAktual;
             basisGaji = Math.round(jamKerjaTotal * tarifPerJam);
             totalGaji = basisGaji - bpjs + tunjBensinTerbayar + tunjKost;
         } else {

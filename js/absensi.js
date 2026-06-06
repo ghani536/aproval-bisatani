@@ -494,10 +494,15 @@ const absensi = {
                 html += `<button onclick="absensi.submit('PULANG')" class="btn-pulang" style="background:#f43f5e; color:white; width:100%; padding:15px; border:none; border-radius:12px; font-weight:bold; cursor:pointer; margin-bottom:10px;"><i class="fas fa-sign-out-alt"></i> ABSEN PULANG</button>`;
             }
 
-            if (jamNow >= jamMinLembur) {
-                html += `<button onclick="absensi.submit('MULAI_LEMBUR')" class="btn-lembur" style="background:#6366f1; color:white; width:100%; padding:15px; border:none; border-radius:12px; font-weight:bold; cursor:pointer;"><i class="fas fa-moon"></i> MULAI LEMBUR</button>`;
-            } else {
-                html += `<button disabled style="background:#cbd5e1; color:#94a3b8; width:100%; padding:15px; border:none; border-radius:12px; font-weight:bold; cursor:not-allowed;"><i class="fas fa-lock"></i> LEMBUR (Aktif ${jamMinLembur})</button>`;
+            // Lembur HANYA untuk karyawan bulanan. Per-jam dibayar jam aktual (masuk→pulang),
+            // jadi tidak ada tombol lembur — kerja lebih lama = pulang lebih malam = jam lebih banyak.
+            const isPerJam = (auth.user && String(auth.user.jenis_gaji || '').toLowerCase() === 'per_jam');
+            if (!isPerJam) {
+                if (jamNow >= jamMinLembur) {
+                    html += `<button onclick="absensi.submit('MULAI_LEMBUR')" class="btn-lembur" style="background:#6366f1; color:white; width:100%; padding:15px; border:none; border-radius:12px; font-weight:bold; cursor:pointer;"><i class="fas fa-moon"></i> MULAI LEMBUR</button>`;
+                } else {
+                    html += `<button disabled style="background:#cbd5e1; color:#94a3b8; width:100%; padding:15px; border:none; border-radius:12px; font-weight:bold; cursor:not-allowed;"><i class="fas fa-lock"></i> LEMBUR (Aktif ${jamMinLembur})</button>`;
+                }
             }
         }
         else if (lastType === 'MULAI_LEMBUR') {
