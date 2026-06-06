@@ -88,20 +88,29 @@ const adminLive = {
     _renderHostSummary() {
         const wrap = document.getElementById('al-host-content');
         const map = {};
+        const ensure = (id, nama) => { if (!map[id]) map[id] = { userId: id, nama: nama, sesi: 0, durasi: 0, closing: 0, komisi: 0 }; if (nama && !map[id].nama) map[id].nama = nama; return map[id]; };
         (this.hostSessions || []).forEach(s => {
-            const k = String(s.userId);
-            if (!map[k]) map[k] = { userId: k, nama: s.nama, sesi: 0, durasi: 0, closing: 0, komisi: 0 };
-            map[k].sesi += 1;
-            map[k].durasi += Number(s.durasi_menit) || 0;
-            map[k].closing += Number(s.jumlah_closing) || 0;
-            map[k].komisi += Number(s.komisi_host) || 0;
+            // Host utama: hitung penuh (sesi, durasi, closing, komisi host)
+            const h = ensure(String(s.userId), s.nama);
+            h.sesi += 1;
+            h.durasi += Number(s.durasi_menit) || 0;
+            h.closing += Number(s.jumlah_closing) || 0;   // closing HANYA ke host utama (anti dobel)
+            h.komisi += Number(s.komisi_host) || 0;
+            // Co-host: ikut sesi & durasi + komisi bagiannya (closing TIDAK ditambah → hindari dobel)
+            const coId = String(s.cohost_userId || '');
+            if (coId) {
+                const co = ensure(coId, s.cohost_nama || coId);
+                co.sesi += 1;
+                co.durasi += Number(s.durasi_menit) || 0;
+                co.komisi += Number(s.komisi_cohost) || 0;
+            }
         });
         const rows = Object.values(map).sort((p, q) => q.durasi - p.durasi);
         if (!rows.length) { wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;">Tidak ada sesi pada rentang ini.</div>'; return; }
         wrap.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;min-width:520px;">
             <thead><tr style="background:#f8fafc;text-align:left;">
                 <th style="padding:9px 8px;font-size:11px;color:#64748b;">Host</th>
-                <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:center;">Sesi</th>
+                <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:center;">Sesi*</th>
                 <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:center;">Total Durasi</th>
                 <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:center;">Closing</th>
                 <th style="padding:9px 8px;font-size:11px;color:#64748b;text-align:right;">Komisi</th>
@@ -114,20 +123,29 @@ const adminLive = {
                 <td style="padding:9px 8px;font-size:13px;text-align:right;color:#0f766e;font-weight:600;">${this._rupiah(r.komisi)}</td>
             </tr>`).join('')}
             </tbody></table></div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:6px;line-height:1.5;">*Sesi & durasi termasuk saat jadi co-host. <b>Komisi</b> = total (host + co-host), cocok dengan payroll. <b>Closing</b> = hanya sebagai host utama (agar tidak terhitung dobel).</div>
             <div id="al-host-detail" style="margin-top:16px;"></div>`;
     },
     showHostSessions(userId) {
-        const sessions = (this.hostSessions || []).filter(s => String(s.userId) === String(userId));
+        // Sesi di mana dia jadi host ATAU co-host
+        const sessions = (this.hostSessions || []).filter(s => String(s.userId) === String(userId) || String(s.cohost_userId || '') === String(userId));
         const det = document.getElementById('al-host-detail');
         if (!sessions.length) { det.innerHTML = ''; return; }
-        const nama = sessions[0].nama;
+        let nama = '';
+        sessions.forEach(s => { if (String(s.userId) === String(userId)) nama = s.nama; else if (String(s.cohost_userId) === String(userId)) nama = s.cohost_nama || nama; });
         det.innerHTML = `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;">
             <h4 style="margin:0 0 10px;font-size:14px;">Sesi ${this._esc(nama)}</h4>
-            ${sessions.map(s => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #f1f5f9;">
-                <div><div style="font-size:13px;font-weight:600;color:#1e293b;">${this._esc(s.tanggal)} · Sesi ${this._esc(s.sesi)} · ${this._esc(s.toko)}</div>
-                <div style="font-size:11px;color:#64748b;">${this._esc(s.lokasi_tipe)} · ${this._fmtDur(s.durasi_menit)} · ${s.jumlah_closing} closing${s.cohost_nama ? ' · co: ' + this._esc(s.cohost_nama) : ''}</div></div>
+            ${sessions.map(s => {
+                const asHost = String(s.userId) === String(userId);
+                const peran = asHost
+                    ? '<span style="font-size:10px;background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;">host</span>'
+                    : '<span style="font-size:10px;background:#f3e8ff;color:#7e22ff;padding:1px 6px;border-radius:4px;">co-host</span>';
+                const bagian = asHost ? (Number(s.komisi_host) || 0) : (Number(s.komisi_cohost) || 0);
+                return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #f1f5f9;">
+                <div><div style="font-size:13px;font-weight:600;color:#1e293b;">${this._esc(s.tanggal)} · Sesi ${this._esc(s.sesi)} · ${this._esc(s.toko)} ${peran}</div>
+                <div style="font-size:11px;color:#64748b;">${this._esc(s.lokasi_tipe)} · ${this._fmtDur(s.durasi_menit)} · ${s.jumlah_closing} closing${asHost && s.cohost_nama ? ' · co: ' + this._esc(s.cohost_nama) : ''} · komisi ${this._rupiah(bagian)}</div></div>
                 <button onclick="adminLive.openSessionDetail('${this._esc(s.id)}')" style="background:#fee2e2;color:#b91c1c;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;"><i class="fas fa-image"></i> Foto & Quote</button>
-            </div>`).join('')}
+            </div>`; }).join('')}
         </div>`;
         det.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
