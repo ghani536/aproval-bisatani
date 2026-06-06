@@ -330,7 +330,14 @@ const adminEmployees = {
         document.getElementById('emp-id').value = emp.id;
         document.getElementById('emp-name').value = emp.name;
         document.getElementById('emp-email').value = emp.email;
-        document.getElementById('emp-dept').value = emp.department || '';
+        // Departemen = dropdown. Kalau nilai lama tak persis cocok dgn opsi (mis. 'gudang' kecil),
+        // tambahkan sbg opsi sementara supaya tidak hilang saat edit.
+        const deptSel = document.getElementById('emp-dept');
+        const deptVal = emp.department || '';
+        if (deptVal && deptSel && !Array.from(deptSel.options).some(o => o.value === deptVal)) {
+            deptSel.add(new Option(deptVal + ' (lama)', deptVal));
+        }
+        deptSel.value = deptVal;
         document.getElementById('emp-position').value = emp.position;
         document.getElementById('emp-gaji').value = emp.gaji_pokok;
         document.getElementById('emp-bpjs').value = emp.bpjs;
