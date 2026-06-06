@@ -141,6 +141,8 @@ const adminLive = {
             const res = await api.post({ action: 'getLiveSessionDetail', id: id, actor_id: a.actor_id });
             if (!res || !res.success) { body.innerHTML = `<div style="color:#ef4444;padding:16px;">${(res && res.error) || 'gagal'}</div>`; return; }
             const s = res.data;
+            // Simpan foto bukti utk lightbox (klik perbesar di halaman, bukan tab baru).
+            this._detailFotos = (s.bukti_fotos && s.bukti_fotos.length) ? s.bukti_fotos : (s.bukti_foto ? [s.bukti_foto] : []);
             const photo = (src, label, jam, lok, quote) => `
                 <div style="flex:1;min-width:140px;">
                     <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;">${label}${jam ? ' · ' + this._esc(String(jam).substring(11, 16)) : ''}</div>
@@ -160,13 +162,30 @@ const adminLive = {
                 </div>
                 <div>
                     ${(() => {
-                        const fotos = (s.bukti_fotos && s.bukti_fotos.length) ? s.bukti_fotos : (s.bukti_foto ? [s.bukti_foto] : []);
+                        const fotos = this._detailFotos;
                         const head = `<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;">🧾 Bukti Dashboard Live (${s.jumlah_closing} closing · ${fotos.length} foto)</div>`;
                         if (!fotos.length) return head + '<div style="background:#f1f5f9;border-radius:8px;padding:18px;text-align:center;color:#cbd5e1;font-size:12px;">tidak ada bukti</div>';
-                        return head + '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + fotos.map(f => `<a href="${f}" target="_blank" rel="noopener"><img src="${f}" style="width:140px;border-radius:8px;border:1px solid #e2e8f0;cursor:zoom-in;"></a>`).join('') + '</div>';
+                        return head + '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + fotos.map((f, i) => `<img src="${f}" onclick="adminLive.zoomFoto(${i})" style="width:140px;border-radius:8px;border:1px solid #e2e8f0;cursor:zoom-in;">`).join('') + '</div>';
                     })()}
                 </div>`;
         } catch (e) { body.innerHTML = `<div style="color:#ef4444;padding:16px;">Error: ${e.message}</div>`; }
+    },
+
+    // Lightbox: perbesar foto bukti di halaman (BUKAN tab baru — data URI diblokir browser).
+    zoomFoto(i) {
+        const src = (this._detailFotos || [])[i];
+        if (!src) return;
+        let ov = document.getElementById('live-foto-zoom');
+        if (!ov) {
+            ov = document.createElement('div');
+            ov.id = 'live-foto-zoom';
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;';
+            ov.onclick = () => { ov.style.display = 'none'; };
+            ov.innerHTML = '<img id="live-foto-zoom-img" style="max-width:100%;max-height:100%;border-radius:8px;">';
+            document.body.appendChild(ov);
+        }
+        document.getElementById('live-foto-zoom-img').src = src;
+        ov.style.display = 'flex';
     },
 
     // ---------- KOMISI RATE ----------
