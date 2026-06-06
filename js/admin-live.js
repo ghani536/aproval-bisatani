@@ -159,8 +159,12 @@ const adminLive = {
                     ${photo(s.selesai_foto, '📷 Selfie Selesai', s.selesai_jam, s.selesai_lokasi, s.quote_selesai)}
                 </div>
                 <div>
-                    <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;">🧾 Bukti Dashboard Live (${s.jumlah_closing} closing)</div>
-                    ${s.bukti_foto ? `<img src="${s.bukti_foto}" style="max-width:100%;border-radius:8px;border:1px solid #e2e8f0;">` : '<div style="background:#f1f5f9;border-radius:8px;padding:18px;text-align:center;color:#cbd5e1;font-size:12px;">tidak ada bukti</div>'}
+                    ${(() => {
+                        const fotos = (s.bukti_fotos && s.bukti_fotos.length) ? s.bukti_fotos : (s.bukti_foto ? [s.bukti_foto] : []);
+                        const head = `<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;">🧾 Bukti Dashboard Live (${s.jumlah_closing} closing · ${fotos.length} foto)</div>`;
+                        if (!fotos.length) return head + '<div style="background:#f1f5f9;border-radius:8px;padding:18px;text-align:center;color:#cbd5e1;font-size:12px;">tidak ada bukti</div>';
+                        return head + '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + fotos.map(f => `<a href="${f}" target="_blank" rel="noopener"><img src="${f}" style="width:140px;border-radius:8px;border:1px solid #e2e8f0;cursor:zoom-in;"></a>`).join('') + '</div>';
+                    })()}
                 </div>`;
         } catch (e) { body.innerHTML = `<div style="color:#ef4444;padding:16px;">Error: ${e.message}</div>`; }
     },
