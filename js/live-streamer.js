@@ -379,18 +379,30 @@ const liveStreamer = {
         this._buktiArr = [];
     },
 
-    // Kompres 1 file gambar → base64 kecil (callback)
+    // Kompres 1 file gambar → base64. DIJAMIN di bawah batas sel Sheets (≈45rb char)
+    // supaya tidak kepotong (penyebab gambar pecah). Turunkan kualitas dulu, lalu lebar.
     _compressImg(file, cb) {
+        const LIMIT = 45000; // aman di bawah 49.500 (cap backend) & 50.000 (batas sel)
         const reader = new FileReader();
         reader.onload = (e) => {
             const im = new Image();
             im.onload = () => {
-                const maxW = 480;
-                const scale = Math.min(1, maxW / im.width);
-                const c = document.createElement('canvas');
-                c.width = Math.round(im.width * scale); c.height = Math.round(im.height * scale);
-                c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-                cb(c.toDataURL('image/jpeg', 0.55));
+                const render = (w, q) => {
+                    const scale = Math.min(1, w / im.width);
+                    const c = document.createElement('canvas');
+                    c.width = Math.round(im.width * scale);
+                    c.height = Math.round(im.height * scale);
+                    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+                    return c.toDataURL('image/jpeg', q);
+                };
+                // 1) lebar 560 dulu (biar angka dashboard terbaca), turunkan kualitas
+                let out = render(560, 0.6);
+                const qSteps = [0.5, 0.42, 0.35, 0.28];
+                for (let i = 0; i < qSteps.length && out.length > LIMIT; i++) out = render(560, qSteps[i]);
+                // 2) kalau masih kebesaran, kecilkan lebar bertahap
+                const wSteps = [480, 420, 360, 320];
+                for (let i = 0; i < wSteps.length && out.length > LIMIT; i++) out = render(wSteps[i], 0.4);
+                cb(out);
             };
             im.src = e.target.result;
         };
