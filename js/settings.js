@@ -92,6 +92,7 @@ const settings = {
 
         // Tab Jam Kerja
         setTime('set-jam-masuk', this._get('jam_masuk', ''));
+        setTime('set-jam-masuk-gudang', this._get('jam_masuk_gudang', ''));
         setTime('set-jam-pulang', this._get('jam_pulang', ''));
         setTime('set-jam-lembur-min', this._get('jam_lembur_min', ''));
         setVal('set-toleransi-telat', this._get('toleransi_telat_menit', 0));
@@ -164,6 +165,7 @@ const settings = {
             const payload = {
                 action: 'savePayrollSettings',
                 jam_masuk: val('set-jam-masuk'),
+                jam_masuk_gudang: val('set-jam-masuk-gudang'),
                 jam_pulang: val('set-jam-pulang'),
                 jam_lembur_min: val('set-jam-lembur-min'),
                 toleransi_telat_menit: val('set-toleransi-telat'),
