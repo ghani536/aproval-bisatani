@@ -1033,9 +1033,9 @@
                             <input type="number" id="lec-closing" min="0" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:12px; font-size:15px;">
                             <label style="display:block; font-size:12px; color:#475569; margin-bottom:4px; font-weight:600;">Catatan (opsional)</label>
                             <textarea id="lec-catatan" rows="2" maxlength="300" placeholder="alasan perubahan" style="width:100%; padding:9px 11px; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:12px; font-family:inherit; font-size:13px; resize:vertical;"></textarea>
-                            <label style="display:block; font-size:12px; color:#475569; margin-bottom:4px; font-weight:600;">Foto Bukti Dashboard <span style="color:#ef4444;">*wajib</span></label>
-                            <input type="file" id="lec-bukti-file" accept="image/*" onchange="liveStreamer.onEditBuktiPick(this)" style="width:100%; font-size:12px; margin-bottom:6px;">
-                            <div id="lec-bukti-preview" style="margin-bottom:14px;"></div>
+                            <label style="display:block; font-size:12px; color:#475569; margin-bottom:4px; font-weight:600;">Foto Bukti Dashboard <span style="color:#ef4444;">*wajib</span> <span style="color:#94a3b8;font-weight:400;">(bisa lebih dari 1)</span></label>
+                            <input type="file" id="lec-bukti-file" accept="image/*" multiple onchange="liveStreamer.onEditBuktiPick(this)" style="width:100%; font-size:12px; margin-bottom:6px;">
+                            <div id="lec-bukti-preview" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;"></div>
                             <div style="background:#fef9c3; color:#854d0e; padding:8px 11px; border-radius:8px; font-size:11px; margin-bottom:14px;">Perubahan closing akan <b>menunggu ACC ulang</b> dari admin.</div>
                             <div style="display:flex; gap:8px; justify-content:flex-end;">
                                 <button onclick="document.getElementById('modal-live-edit-closing').style.display='none'" style="background:#e2e8f0; color:#475569; border:none; padding:9px 16px; border-radius:8px; cursor:pointer;">Batal</button>
