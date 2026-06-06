@@ -388,13 +388,30 @@ const adminLive = {
     },
 
     // ---------- EDIT SESI ----------
-    openEditModal(id) {
+    async _loadStreamers() {
+        if (this.streamers && this.streamers.length) return this.streamers;
+        try {
+            const res = await api.post({ action: 'getLiveStreamers' });
+            this.streamers = (res && res.success) ? (res.data || []) : [];
+        } catch (e) { this.streamers = []; }
+        return this.streamers;
+    },
+    async openEditModal(id) {
         const s = this.sessions.find(x => String(x.id) === String(id));
         if (!s) return;
         document.getElementById('le-id').value = s.id;
         document.getElementById('le-closing').value = s.jumlah_closing || 0;
-        document.getElementById('le-info').textContent = `${s.tanggal} · Sesi ${s.sesi} · ${s.nama} · ${s.toko}${s.cohost_nama ? ' (co-host: ' + s.cohost_nama + ')' : ''}`;
+        document.getElementById('le-info').textContent = `${s.tanggal} · Sesi ${s.sesi} · ${s.nama} · ${s.toko}`;
         this._editTarget = s;
+        // Isi dropdown co-host (kecuali host sendiri), pilih co-host saat ini kalau ada
+        await this._loadStreamers();
+        const sel = document.getElementById('le-cohost');
+        if (sel) {
+            const opts = (this.streamers || []).filter(c => String(c.id) !== String(s.userId))
+                .map(c => `<option value="${this._esc(c.id)}" ${String(c.id) === String(s.cohost_userId || '') ? 'selected' : ''}>${this._esc(c.name)}</option>`).join('');
+            sel.innerHTML = '<option value="">— tanpa co-host —</option>' + opts;
+            sel.onchange = () => this._updateEditPreview();
+        }
         this._updateEditPreview();
         const inp = document.getElementById('le-closing');
         inp.oninput = () => this._updateEditPreview();
@@ -405,7 +422,8 @@ const adminLive = {
         const closing = Math.max(0, parseInt(document.getElementById('le-closing').value) || 0);
         const rate = Number(s.komisi_per_closing) || 0;
         const komisi = closing * rate;
-        const hasCo = !!s.cohost_nama;
+        const sel = document.getElementById('le-cohost');
+        const hasCo = !!(sel && sel.value);
         const prev = document.getElementById('le-komisi-preview');
         prev.innerHTML = `Tarif terkunci: <b>${this._rupiah(rate)}</b>/closing → Komisi: <b>${this._rupiah(komisi)}</b>` +
             (hasCo ? ` (host ${this._rupiah(komisi / 2)} + co-host ${this._rupiah(komisi / 2)})` : '');
@@ -413,9 +431,11 @@ const adminLive = {
     async saveEdit() {
         const id = document.getElementById('le-id').value;
         const closing = document.getElementById('le-closing').value;
+        const sel = document.getElementById('le-cohost');
+        const cohost = sel ? sel.value : '';
         const a = this._actor();
         try {
-            const res = await api.post({ action: 'editLiveSession', id: id, jumlah_closing: closing, actor_id: a.actor_id, actor_name: a.actor_name });
+            const res = await api.post({ action: 'editLiveSession', id: id, jumlah_closing: closing, cohost_userId: cohost, actor_id: a.actor_id, actor_name: a.actor_name });
             if (res && res.success) { this.closeModal('modal-live-edit'); this.loadSessions(); }
             else alert('❌ ' + ((res && res.error) || 'gagal simpan'));
         } catch (e) { alert('❌ Error: ' + e.message); }
