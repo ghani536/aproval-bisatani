@@ -92,8 +92,10 @@ const adminDashboard = {
                 const end = h.tanggal_selesai || start;
                 return start && todayYMD >= start && todayYMD <= end;
             });
-            const isWeekend = (today.getDay() === 0 || today.getDay() === 6);
-            const isOffDay = !!todayHoliday || isWeekend;
+            // Sabtu & Minggu TETAP hari kerja (Sabtu masuk; Minggu ada yang masuk spt gudang,
+            // libur gudang bergilir). Jadi weekend BUKAN off-day — hanya hari libur nasional.
+            const isWeekend = false;
+            const isOffDay = !!todayHoliday;
 
             this._renderHolidayBanner(todayHoliday, isWeekend);
             this._render6Stats(employees, attendance, pengajuan, config, startPeriod, endPeriod, isOffDay);
