@@ -34,7 +34,8 @@ const sopirSaya = {
                 this.rate = Number(res.rate) || 0;
                 this.todaySopir = res.todaySopir || null;
                 this.sudahPulang = !!res.sudahPulang;
-            } else { this.data = []; this.todaySopir = null; }
+                this.jadwal = res.jadwalSopir || [];
+            } else { this.data = []; this.todaySopir = null; this.jadwal = []; }
         } catch (e) { this.data = []; }
         this.render();
     },
@@ -65,6 +66,18 @@ const sopirSaya = {
             <div style="font-size:34px;font-weight:800;line-height:1.1;margin:4px 0;">${tripBulan}<small style="font-size:15px;opacity:0.85;"> berangkat</small></div>
             <div style="font-size:11px;opacity:0.85;">disetujui bulan ini · honor masuk slip gaji</div>
         </div>`;
+
+        // Jadwal sopir minggu ini (Sen–Kam) — semua karyawan bisa lihat giliran
+        const jad = this.jadwal || [];
+        if (jad.length) {
+            html += `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;margin-bottom:16px;">
+                <div style="font-size:11px;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:10px;"><i class="fas fa-calendar-week" style="color:#0ea5e9;"></i> Jadwal Sopir Minggu Ini</div>
+                ${jad.map(d => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;${d.isToday ? 'background:#f0f9ff;border-radius:6px;padding-left:8px;padding-right:8px;' : ''}">
+                    <div style="font-size:13px;font-weight:${d.isToday ? '700' : '600'};color:${d.isToday ? '#0369a1' : '#334155'};">${this._esc(d.hari)}${d.isToday ? ' <span style="font-size:10px;background:#0ea5e9;color:#fff;padding:1px 7px;border-radius:10px;">hari ini</span>' : ''}</div>
+                    <div style="font-size:13px;color:${d.nama ? '#1e293b' : '#cbd5e1'};font-weight:${d.nama ? '600' : '400'};">${d.nama ? this._esc(d.nama) : '— belum diatur —'}</div>
+                </div>`).join('')}
+            </div>`;
+        }
 
         // Kartu aksi hari ini — berdasarkan status efektif (pola/ganti) dari server
         const ts = this.todaySopir;
