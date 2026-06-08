@@ -126,7 +126,8 @@ const kpiSaya = {
                 inputHtml += `<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;">
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:13px;font-weight:600;color:#1e293b;">${this._esc(it.indikator)}</div>
-                        <div style="font-size:11px;color:#94a3b8;">Target: ${this._esc(it.target)} ${this._esc(it.satuan)} · ${this._esc(it.periode_target || it.periode)}</div>
+                        ${it.sop ? `<div style="font-size:12px;color:#475569;margin-top:1px;">${this._esc(it.sop)}</div>` : ''}
+                        <div style="font-size:11px;color:#94a3b8;margin-top:1px;">Target: ${this._esc(it.target)} ${this._esc(it.satuan)} · ${this._esc(it.periode_target || it.periode)}</div>
                     </div>
                     ${control}
                 </div>`;

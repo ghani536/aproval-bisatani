@@ -303,15 +303,17 @@ const adminKpi = {
             const daily = (res && res.success) ? (res.data || []) : [];
             this.empDaily = daily;
             if (!daily.length) { body.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:24px;">Belum ada capaian yang diisi karyawan bulan ini.</div>'; return; }
-            const itemName = {}; (this.empItems || []).forEach(it => itemName[String(it.id)] = it.indikator);
+            const itemMap = {}; (this.empItems || []).forEach(it => itemMap[String(it.id)] = it);
             daily.sort((x, y) => (y.tanggal).localeCompare(x.tanggal));
             body.innerHTML = daily.map(r => {
                 const st = String(r.status).toUpperCase();
                 const stColor = st === 'VERIFIED' ? '#16a34a' : (st === 'REJECTED' ? '#dc2626' : '#a16207');
                 const stBg = st === 'VERIFIED' ? '#dcfce7' : (st === 'REJECTED' ? '#fee2e2' : '#fef9c3');
+                const _it = itemMap[String(r.kpi_item_id)] || {};
                 return `<div style="display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #f1f5f9;">
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:12px;font-weight:600;color:#1e293b;">${this._esc(itemName[String(r.kpi_item_id)] || ('Item ' + r.kpi_item_id))}</div>
+                        <div style="font-size:12px;font-weight:600;color:#1e293b;">${this._esc(_it.indikator || ('Item ' + r.kpi_item_id))}</div>
+                        ${_it.sop ? `<div style="font-size:11px;color:#475569;">${this._esc(_it.sop)}</div>` : ''}
                         <div style="font-size:11px;color:#64748b;">${this._esc(r.tanggal)} · nilai <b>${r.nilai}</b> <span style="background:${stBg};color:${stColor};padding:1px 6px;border-radius:4px;font-size:10px;">${st}</span></div>
                     </div>
                     <button onclick="adminKpi.verifyDaily('${this._esc(r.id)}','VERIFIED')" title="Verifikasi" style="background:#dcfce7;color:#15803d;border:none;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:11px;"><i class="fas fa-check"></i></button>
