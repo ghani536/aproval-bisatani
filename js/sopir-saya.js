@@ -61,9 +61,9 @@ const sopirSaya = {
 
         let html = `
         <div style="background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;border-radius:14px;padding:18px;margin-bottom:16px;">
-            <div style="font-size:12px;opacity:0.9;">Honor Sopir Bulan Ini</div>
-            <div style="font-size:34px;font-weight:800;line-height:1.1;margin:4px 0;">${this._rp(honorBulan)}</div>
-            <div style="font-size:11px;opacity:0.85;">${tripBulan} berangkat disetujui · ${this._rp(this.rate)}/berangkat</div>
+            <div style="font-size:12px;opacity:0.9;">Tugas Sopir Bulan Ini</div>
+            <div style="font-size:34px;font-weight:800;line-height:1.1;margin:4px 0;">${tripBulan}<small style="font-size:15px;opacity:0.85;"> berangkat</small></div>
+            <div style="font-size:11px;opacity:0.85;">disetujui bulan ini · honor masuk slip gaji</div>
         </div>`;
 
         // Kartu aksi hari ini — berdasarkan status efektif (pola/ganti) dari server
@@ -76,7 +76,7 @@ const sopirSaya = {
                 ${bisa
                     ? `<div style="font-size:12px;color:#64748b;margin-bottom:10px;">Konfirmasi setelah selesai berangkat. Isi tujuan/catatan (opsional).</div>
                        <textarea id="sopir-catatan" rows="2" placeholder="Mis: antar ke Wonosobo & Magelang" style="width:100%;box-sizing:border-box;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:10px;resize:vertical;"></textarea>
-                       <button onclick="sopirSaya.konfirmasi()" id="sopir-btn-konfirm" style="width:100%;background:#0ea5e9;color:#fff;border:none;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;"><i class="fas fa-check"></i> Konfirmasi Berangkat (${this._rp(this.rate)})</button>`
+                       <button onclick="sopirSaya.konfirmasi()" id="sopir-btn-konfirm" style="width:100%;background:#0ea5e9;color:#fff;border:none;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;"><i class="fas fa-check"></i> Konfirmasi Berangkat</button>`
                     : `<div style="background:#fef9c3;color:#854d0e;border-radius:8px;padding:11px;font-size:12.5px;"><i class="fas fa-lock"></i> Selesaikan <b>Absen Pulang</b> dulu, baru bisa konfirmasi berangkat sopir.</div>`
                 }
             </div>`;
@@ -106,7 +106,6 @@ const sopirSaya = {
                     </div>
                     <div style="text-align:right;white-space:nowrap;">
                         ${this._badge(t.status)}
-                        ${t.status === 'DISETUJUI' ? `<div style="font-size:11px;color:#0f766e;font-weight:700;margin-top:2px;">+${this._rp(t.honor)}</div>` : ''}
                     </div>
                 </div>`;
             });
