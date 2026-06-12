@@ -40,6 +40,20 @@ const adminSopir = {
         await this.load();
     },
 
+    // Badge notif sidebar = jumlah keberangkatan sopir yang perlu di-ACC (PENDING)
+    async refreshBadge() {
+        try {
+            const a = this._actor();
+            if (!a.actor_id) return;
+            const res = await api.post({ action: 'getSopirPendingCount', actor_id: a.actor_id });
+            const badge = document.getElementById('sopir-acc-badge');
+            if (!badge) return;
+            const n = (res && res.success) ? Number(res.count) || 0 : 0;
+            if (n > 0) { badge.textContent = n > 99 ? '99+' : n; badge.style.display = 'inline-block'; }
+            else badge.style.display = 'none';
+        } catch (e) { /* silent */ }
+    },
+
     async load() {
         const wrap = document.getElementById('admin-sopir-content');
         if (wrap) wrap.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;"><i class="fas fa-sync fa-spin"></i> Memuat...</div>';
@@ -58,6 +72,7 @@ const adminSopir = {
             this.pola = (resPola && resPola.success) ? (resPola.data || {}) : {};
         } catch (e) { this.trips = []; }
         this.render();
+        this.refreshBadge();
     },
 
     _gudangEmployees() {
