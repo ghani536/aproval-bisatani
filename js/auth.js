@@ -156,6 +156,7 @@ const auth = {
                     if (window.adminApproval) adminApproval.refreshBadgeOnly();
                     if (window.adminPengajuan) adminPengajuan.preloadBadge();
                     if (window.adminLive) adminLive.refreshBadge();
+                    if (window.adminSopir) adminSopir.refreshBadge();
                 }, 1000);
             } else {
                 if (adminMenu) adminMenu.classList.add('hidden');
